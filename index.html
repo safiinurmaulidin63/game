@@ -6,22 +6,41 @@
   <title>RPG Prototype</title>
   <link rel="stylesheet" href="./css/style.css" />
 </head>
+
 <body>
   <canvas id="gameCanvas"></canvas>
 
-  <!-- Kontrol khusus HP. Di PC otomatis disembunyikan oleh CSS. -->
+  <!-- Kontrol khusus HP -->
   <div id="mobileControls" aria-hidden="true">
+
+    <!-- Joystick gerak -->
     <div id="moveJoystick" class="joystick" aria-label="Joystick gerak">
       <div class="joystick-ring"></div>
       <div id="moveStick" class="joystick-stick"></div>
     </div>
 
-    <button id="mobilePauseButton" class="mobile-pause" type="button" aria-label="Pause">
+    <!-- Pause -->
+    <button
+      id="mobilePauseButton"
+      class="mobile-pause"
+      type="button"
+      aria-label="Pause"
+    >
       II
     </button>
+
+    <!-- Tembak -->
+    <button
+      id="mobileFireButton"
+      class="mobile-fire"
+      type="button"
+      aria-label="Fire"
+    >
+      FIRE
+    </button>
+
   </div>
 
-  <!-- PENTING: harus type="module" karena kita pakai import/export -->
   <script type="module" src="./js/main.js"></script>
 </body>
 </html>

@@ -19,6 +19,7 @@ html, body {
    MOBILE CONTROLS
    Default: tidak terlihat di PC.
    ========================================================= */
+
 #mobileControls {
   display: none;
 }
@@ -28,6 +29,7 @@ html, body {
   hover: none = perangkat utama tidak punya hover seperti mouse.
 */
 @media (max-width: 900px), (pointer: coarse), (hover: none) {
+
   #gameCanvas {
     cursor: default;
   }
@@ -42,12 +44,17 @@ html, body {
     -webkit-user-select: none;
   }
 
+  /* =========================
+     JOYSTICK GERAK
+     ========================= */
   .joystick {
     position: absolute;
     left: max(24px, env(safe-area-inset-left));
     bottom: max(24px, env(safe-area-inset-bottom));
+
     width: 132px;
     height: 132px;
+
     pointer-events: auto;
     touch-action: none;
   }
@@ -55,43 +62,65 @@ html, body {
   .joystick-ring {
     position: absolute;
     inset: 0;
+
     box-sizing: border-box;
     border-radius: 50%;
+
     border: 3px solid rgba(255, 255, 255, 0.38);
     background: rgba(0, 0, 0, 0.26);
+
     box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.35);
   }
 
   .joystick-stick {
     position: absolute;
+
     left: 50%;
     top: 50%;
+
     width: 58px;
     height: 58px;
+
     margin-left: -29px;
     margin-top: -29px;
+
     border-radius: 50%;
+
     background: rgba(255, 255, 255, 0.66);
     border: 2px solid rgba(255, 255, 255, 0.8);
+
     box-sizing: border-box;
+
     transform: translate(0px, 0px);
     will-change: transform;
+
     pointer-events: none;
   }
 
+  /* =========================
+     TOMBOL PAUSE
+     ========================= */
   .mobile-pause {
     position: absolute;
+
     top: max(18px, env(safe-area-inset-top));
     right: max(18px, env(safe-area-inset-right));
+
     width: 54px;
     height: 54px;
+
     padding: 0;
+
     border-radius: 14px;
+
     border: 2px solid rgba(255, 255, 255, 0.65);
     background: rgba(0, 0, 0, 0.48);
+
     color: #fff;
+
     font: 800 20px/1 sans-serif;
     letter-spacing: 2px;
+
     pointer-events: auto;
     touch-action: manipulation;
   }
@@ -100,7 +129,45 @@ html, body {
     transform: scale(0.94);
     background: rgba(255, 255, 255, 0.2);
   }
+
+  /* =========================
+     TOMBOL FIRE
+     ========================= */
+  .mobile-fire {
+    position: absolute;
+
+    right: max(28px, env(safe-area-inset-right));
+    bottom: max(32px, env(safe-area-inset-bottom));
+
+    width: 86px;
+    height: 86px;
+
+    padding: 0;
+
+    border-radius: 50%;
+
+    border: 3px solid rgba(255, 255, 255, 0.7);
+    background: rgba(180, 30, 30, 0.55);
+
+    color: white;
+
+    font-size: 16px;
+    font-weight: bold;
+
+    pointer-events: auto;
+    touch-action: none;
+
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .mobile-fire:active {
+    transform: scale(0.92);
+    background: rgba(220, 50, 50, 0.75);
+  }
 }
+
+/* Cadangan deteksi touchscreen lewat JavaScript */
 .touch-device #mobileControls {
   display: block;
 }

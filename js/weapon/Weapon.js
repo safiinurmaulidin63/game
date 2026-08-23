@@ -1,10 +1,19 @@
+// Weapon.js
+// Mengelola projectile player.
+// Arah projectile SELALU memakai player.angle.
+//
+// PC:
+// mouse -> Player.angle -> projectile
+//
+// HP:
+// aim joystick -> mobileAim -> Player.angle -> projectile
+
 import { Projectile } from './Projectile.js';
 import { soundManager } from '../core/SoundManager.js';
 
 export class Weapon {
   constructor() {
     this.projectiles = [];
-
     this.cooldown = 0.25;
     this.cooldownTimer = 0;
   }
@@ -14,14 +23,9 @@ export class Weapon {
       this.cooldownTimer -= dt;
     }
 
-    if (
-      input.mouseDown &&
-      this.cooldownTimer <= 0
-    ) {
+    if (input.mouseDown && this.cooldownTimer <= 0) {
       this._fire(player);
-
-      this.cooldownTimer =
-        this.cooldown;
+      this.cooldownTimer = this.cooldown;
     }
 
     for (const projectile of this.projectiles) {
@@ -30,14 +34,14 @@ export class Weapon {
 
     this.projectiles =
       this.projectiles.filter(
-        projectile => !projectile.dead
+        (projectile) => !projectile.dead
       );
   }
 
   _fire(player) {
-    // Pakai arah player.
-    // PC: player.angle berasal dari mouse.
-    // HP: player.angle berasal dari joystick aim.
+    // Jangan hitung arah dari posisi mouse di sini.
+    // Player sudah menentukan angle dari mouse (PC)
+    // atau joystick aim (HP).
     const angle = player.angle;
 
     this.projectiles.push(

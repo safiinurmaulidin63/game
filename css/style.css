@@ -5,10 +5,99 @@ html, body {
   background: #111;
   height: 100%;
   width: 100%;
+  touch-action: none;
+  overscroll-behavior: none;
 }
 
 #gameCanvas {
   display: block;
   background: #1e1e2a;
   cursor: crosshair;
+}
+
+/* =========================================================
+   MOBILE CONTROLS
+   Default: tidak terlihat di PC.
+   ========================================================= */
+#mobileControls {
+  display: none;
+}
+
+/*
+  pointer: coarse = perangkat utama memakai sentuhan/jari.
+  hover: none = perangkat utama tidak punya hover seperti mouse.
+*/
+@media (pointer: coarse), (hover: none) {
+  #gameCanvas {
+    cursor: default;
+  }
+
+  #mobileControls {
+    display: block;
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 20;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .joystick {
+    position: absolute;
+    left: max(24px, env(safe-area-inset-left));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    width: 132px;
+    height: 132px;
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  .joystick-ring {
+    position: absolute;
+    inset: 0;
+    box-sizing: border-box;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.38);
+    background: rgba(0, 0, 0, 0.26);
+    box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.35);
+  }
+
+  .joystick-stick {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 58px;
+    height: 58px;
+    margin-left: -29px;
+    margin-top: -29px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.66);
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    box-sizing: border-box;
+    transform: translate(0px, 0px);
+    will-change: transform;
+    pointer-events: none;
+  }
+
+  .mobile-pause {
+    position: absolute;
+    top: max(18px, env(safe-area-inset-top));
+    right: max(18px, env(safe-area-inset-right));
+    width: 54px;
+    height: 54px;
+    padding: 0;
+    border-radius: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.65);
+    background: rgba(0, 0, 0, 0.48);
+    color: #fff;
+    font: 800 20px/1 sans-serif;
+    letter-spacing: 2px;
+    pointer-events: auto;
+    touch-action: manipulation;
+  }
+
+  .mobile-pause:active {
+    transform: scale(0.94);
+    background: rgba(255, 255, 255, 0.2);
+  }
 }

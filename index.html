@@ -2,12 +2,24 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>RPG Prototype</title>
   <link rel="stylesheet" href="./css/style.css" />
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
+
+  <!-- Kontrol khusus HP. Di PC otomatis disembunyikan oleh CSS. -->
+  <div id="mobileControls" aria-hidden="true">
+    <div id="moveJoystick" class="joystick" aria-label="Joystick gerak">
+      <div class="joystick-ring"></div>
+      <div id="moveStick" class="joystick-stick"></div>
+    </div>
+
+    <button id="mobilePauseButton" class="mobile-pause" type="button" aria-label="Pause">
+      II
+    </button>
+  </div>
 
   <!-- PENTING: harus type="module" karena kita pakai import/export -->
   <script type="module" src="./js/main.js"></script>

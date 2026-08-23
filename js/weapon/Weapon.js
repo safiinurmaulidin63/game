@@ -1,7 +1,5 @@
 // Weapon.js
-// Tugas: mengelola daftar peluru (projectiles), membuat peluru
-// baru saat klik kiri (dengan jeda/cooldown), dan meneruskan
-// update + draw ke setiap Projectile.
+// Mengelola projectile dan menggunakan arah hadap Player.
 
 import { Projectile } from './Projectile.js';
 import { soundManager } from '../core/SoundManager.js';
@@ -9,42 +7,70 @@ import { soundManager } from '../core/SoundManager.js';
 export class Weapon {
   constructor() {
     this.projectiles = [];
-    this.cooldown = 0.25; // detik antar tembakan
+
+    // Jeda antar tembakan
+    this.cooldown = 0.25;
     this.cooldownTimer = 0;
   }
 
   update(dt, input, player, camera, tileMap) {
-    // Kurangi timer cooldown setiap frame
+
+    // Kurangi cooldown
     if (this.cooldownTimer > 0) {
       this.cooldownTimer -= dt;
     }
 
-    // Kalau mouse ditekan DAN cooldown sudah habis -> tembak
-    if (input.mouseDown && this.cooldownTimer <= 0) {
-      this._fire(player, input, camera);
-      this.cooldownTimer = this.cooldown;
+    // Mouse PC maupun tombol FIRE HP
+    // sama-sama mengubah input.mouseDown.
+    if (
+      input.mouseDown &&
+      this.cooldownTimer <= 0
+    ) {
+      this._fire(player);
+
+      this.cooldownTimer =
+        this.cooldown;
     }
 
-    // Update semua peluru yang sedang aktif
-    for (const p of this.projectiles) {
-      p.update(dt, tileMap);
+    // Update projectile
+    for (const projectile of this.projectiles) {
+      projectile.update(dt, tileMap);
     }
 
-    // Buang peluru yang sudah "mati" (lifeTime habis)
-    this.projectiles = this.projectiles.filter((p) => !p.dead);
+    // Hapus projectile yang sudah selesai
+    this.projectiles =
+      this.projectiles.filter(
+        projectile => !projectile.dead
+      );
   }
 
-  _fire(player, input, camera) {
-    const mouseWorld = camera.screenToWorld(input.mouse.x, input.mouse.y);
-    const angle = Math.atan2(mouseWorld.y - player.y, mouseWorld.x - player.x);
+  _fire(player) {
 
-    this.projectiles.push(new Projectile(player.x, player.y, angle));
+    // INI BAGIAN PENTING.
+    //
+    // PC:
+    // mouse → Player.angle
+    //
+    // HP:
+    // aim joystick → mobileAim → Player.angle
+    //
+    // Weapon tinggal memakai angle tersebut.
+    const angle = player.angle;
+
+    this.projectiles.push(
+      new Projectile(
+        player.x,
+        player.y,
+        angle
+      )
+    );
+
     soundManager.play('shoot');
   }
 
   draw(ctx, camera) {
-    for (const p of this.projectiles) {
-      p.draw(ctx, camera);
+    for (const projectile of this.projectiles) {
+      projectile.draw(ctx, camera);
     }
   }
 }

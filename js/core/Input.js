@@ -23,6 +23,14 @@ export class Input {
     this.mobileMove = { x: 0, y: 0 };
 
     this._bindEvents();
+    const isTouchDevice =
+    'ontouchstart' in window ||
+    navigator.maxTouchPoints > 0 ||
+    window.matchMedia('(pointer: coarse)').matches;
+
+if (isTouchDevice) {
+    document.body.classList.add('touch-device');
+}
     this._bindMobileControls();
   }
 

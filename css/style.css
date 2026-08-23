@@ -27,7 +27,7 @@ html, body {
   pointer: coarse = perangkat utama memakai sentuhan/jari.
   hover: none = perangkat utama tidak punya hover seperti mouse.
 */
-@media (pointer: coarse), (hover: none) {
+@media (max-width: 900px), (pointer: coarse), (hover: none) {
   #gameCanvas {
     cursor: default;
   }
@@ -100,4 +100,7 @@ html, body {
     transform: scale(0.94);
     background: rgba(255, 255, 255, 0.2);
   }
+}
+.touch-device #mobileControls {
+  display: block;
 }

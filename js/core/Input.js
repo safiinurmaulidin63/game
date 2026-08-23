@@ -1,288 +1,451 @@
-// Input.js
-// Menangani input keyboard, mouse, joystick mobile, tombol pause, dan tombol fire.
-
 export class Input {
   constructor(canvas) {
     this.canvas = canvas;
 
-    // Status tombol keyboard
+    // =========================
+    // KEYBOARD
+    // =========================
     this.keys = {};
-
-    // Tombol yang baru ditekan pada frame ini
     this.justPressed = {};
 
-    // Posisi mouse relatif terhadap canvas
+    // =========================
+    // MOUSE
+    // =========================
     this.mouse = {
       x: 0,
       y: 0
     };
 
-    // Klik kiri mouse / tombol FIRE mobile
     this.mouseDown = false;
 
-    // Input joystick mobile
-    // Nilai x dan y berkisar -1 sampai 1
+    // =========================
+    // MOBILE MOVE
+    // =========================
     this.mobileMove = {
       x: 0,
       y: 0
     };
 
-    // Event keyboard dan mouse
+    // =========================
+    // MOBILE AIM
+    // =========================
+    this.mobileAim = {
+      x: 1,
+      y: 0
+    };
+
     this._bindEvents();
 
-    // Deteksi perangkat touchscreen
+    // Deteksi HP / touchscreen
     const isTouchDevice =
       'ontouchstart' in window ||
       navigator.maxTouchPoints > 0 ||
       window.matchMedia('(pointer: coarse)').matches;
 
     if (isTouchDevice) {
-      document.body.classList.add('touch-device');
+      document.body.classList.add(
+        'touch-device'
+      );
     }
 
-    // Event kontrol mobile
     this._bindMobileControls();
   }
 
-  // =========================================================
+  // =====================================================
   // KEYBOARD + MOUSE
-  // =========================================================
+  // =====================================================
   _bindEvents() {
-    // Keyboard ditekan
-    window.addEventListener('keydown', (e) => {
-      if (!this.keys[e.code]) {
-        this.justPressed[e.code] = true;
+
+    window.addEventListener(
+      'keydown',
+      (e) => {
+
+        if (!this.keys[e.code]) {
+          this.justPressed[e.code] = true;
+        }
+
+        this.keys[e.code] = true;
       }
+    );
 
-      this.keys[e.code] = true;
-    });
+    window.addEventListener(
+      'keyup',
+      (e) => {
 
-    // Keyboard dilepas
-    window.addEventListener('keyup', (e) => {
-      this.keys[e.code] = false;
-    });
-
-    // Mouse bergerak
-    this.canvas.addEventListener('mousemove', (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-
-      this.mouse.x = e.clientX - rect.left;
-      this.mouse.y = e.clientY - rect.top;
-    });
-
-    // Klik kiri ditekan
-    this.canvas.addEventListener('mousedown', (e) => {
-      if (e.button === 0) {
-        this.mouseDown = true;
+        this.keys[e.code] = false;
       }
-    });
+    );
 
-    // Klik kiri dilepas
-    this.canvas.addEventListener('mouseup', (e) => {
-      if (e.button === 0) {
+    this.canvas.addEventListener(
+      'mousemove',
+      (e) => {
+
+        const rect =
+          this.canvas.getBoundingClientRect();
+
+        this.mouse.x =
+          e.clientX - rect.left;
+
+        this.mouse.y =
+          e.clientY - rect.top;
+      }
+    );
+
+    this.canvas.addEventListener(
+      'mousedown',
+      (e) => {
+
+        if (e.button === 0) {
+          this.mouseDown = true;
+        }
+      }
+    );
+
+    this.canvas.addEventListener(
+      'mouseup',
+      (e) => {
+
+        if (e.button === 0) {
+          this.mouseDown = false;
+        }
+      }
+    );
+
+    this.canvas.addEventListener(
+      'mouseleave',
+      () => {
+
         this.mouseDown = false;
       }
-    });
-
-    // Kalau mouse keluar canvas saat klik ditahan
-    this.canvas.addEventListener('mouseleave', () => {
-      this.mouseDown = false;
-    });
+    );
   }
 
-  // =========================================================
-  // MOBILE CONTROLS
-  // =========================================================
+  // =====================================================
+  // MOBILE
+  // =====================================================
   _bindMobileControls() {
-    const joystick = document.getElementById('moveJoystick');
-    const stick = document.getElementById('moveStick');
+
+    const moveJoystick =
+      document.getElementById(
+        'moveJoystick'
+      );
+
+    const moveStick =
+      document.getElementById(
+        'moveStick'
+      );
+
+    const aimJoystick =
+      document.getElementById(
+        'aimJoystick'
+      );
+
+    const aimStick =
+      document.getElementById(
+        'aimStick'
+      );
 
     const pauseButton =
-      document.getElementById('mobilePauseButton');
+      document.getElementById(
+        'mobilePauseButton'
+      );
 
     const fireButton =
-      document.getElementById('mobileFireButton');
+      document.getElementById(
+        'mobileFireButton'
+      );
 
-    // Kalau joystick tidak ada, kontrol PC tetap bisa jalan
-    if (!joystick || !stick) {
-      return;
+    // =========================
+    // JOYSTICK GERAK
+    // =========================
+
+    if (moveJoystick && moveStick) {
+
+      let movePointerId = null;
+
+      const maxDistance = 46;
+
+      const resetMove = () => {
+
+        movePointerId = null;
+
+        this.mobileMove.x = 0;
+        this.mobileMove.y = 0;
+
+        moveStick.style.transform =
+          'translate(0px, 0px)';
+      };
+
+      const updateMove = (e) => {
+
+        const rect =
+          moveJoystick
+            .getBoundingClientRect();
+
+        const centerX =
+          rect.left +
+          rect.width / 2;
+
+        const centerY =
+          rect.top +
+          rect.height / 2;
+
+        let dx =
+          e.clientX - centerX;
+
+        let dy =
+          e.clientY - centerY;
+
+        const distance =
+          Math.hypot(dx, dy);
+
+        if (distance > maxDistance) {
+
+          const scale =
+            maxDistance / distance;
+
+          dx *= scale;
+          dy *= scale;
+        }
+
+        moveStick.style.transform =
+          `translate(${dx}px, ${dy}px)`;
+
+        this.mobileMove.x =
+          dx / maxDistance;
+
+        this.mobileMove.y =
+          dy / maxDistance;
+      };
+
+      moveJoystick.addEventListener(
+        'pointerdown',
+        (e) => {
+
+          e.preventDefault();
+
+          if (movePointerId !== null) {
+            return;
+          }
+
+          movePointerId =
+            e.pointerId;
+
+          moveJoystick
+            .setPointerCapture?.(
+              e.pointerId
+            );
+
+          updateMove(e);
+        }
+      );
+
+      moveJoystick.addEventListener(
+        'pointermove',
+        (e) => {
+
+          if (
+            e.pointerId !==
+            movePointerId
+          ) {
+            return;
+          }
+
+          e.preventDefault();
+
+          updateMove(e);
+        }
+      );
+
+      moveJoystick.addEventListener(
+        'pointerup',
+        (e) => {
+
+          if (
+            e.pointerId !==
+            movePointerId
+          ) {
+            return;
+          }
+
+          resetMove();
+        }
+      );
+
+      moveJoystick.addEventListener(
+        'pointercancel',
+        resetMove
+      );
     }
 
-    let activePointerId = null;
+    // =========================
+    // JOYSTICK AIM
+    // =========================
 
-    // Jarak maksimal stick dari tengah joystick
-    const maxDistance = 46;
+    if (aimJoystick && aimStick) {
 
-    // =====================================================
-    // RESET JOYSTICK
-    // =====================================================
-    const resetJoystick = () => {
-      activePointerId = null;
+      let aimPointerId = null;
 
-      this.mobileMove.x = 0;
-      this.mobileMove.y = 0;
+      const maxDistance = 46;
 
-      stick.style.transform =
-        'translate(0px, 0px)';
-    };
+      const resetAim = () => {
 
-    // =====================================================
-    // UPDATE JOYSTICK
-    // =====================================================
-    const updateJoystick = (e) => {
-      const rect =
-        joystick.getBoundingClientRect();
+        aimPointerId = null;
 
-      const centerX =
-        rect.left + rect.width / 2;
+        aimStick.style.transform =
+          'translate(0px, 0px)';
+      };
 
-      const centerY =
-        rect.top + rect.height / 2;
+      const updateAim = (e) => {
 
-      let dx =
-        e.clientX - centerX;
+        const rect =
+          aimJoystick
+            .getBoundingClientRect();
 
-      let dy =
-        e.clientY - centerY;
+        const centerX =
+          rect.left +
+          rect.width / 2;
 
-      const distance =
-        Math.hypot(dx, dy);
+        const centerY =
+          rect.top +
+          rect.height / 2;
 
-      // Batasi stick supaya tidak keluar lingkaran
-      if (distance > maxDistance) {
-        const scale =
-          maxDistance / distance;
+        let dx =
+          e.clientX - centerX;
 
-        dx *= scale;
-        dy *= scale;
-      }
+        let dy =
+          e.clientY - centerY;
 
-      // Gerakkan visual joystick
-      stick.style.transform =
-        `translate(${dx}px, ${dy}px)`;
+        const distance =
+          Math.hypot(dx, dy);
 
-      // Simpan nilai input
-      this.mobileMove.x =
-        dx / maxDistance;
+        if (distance > maxDistance) {
 
-      this.mobileMove.y =
-        dy / maxDistance;
-    };
+          const scale =
+            maxDistance / distance;
 
-    // =====================================================
-    // JOYSTICK POINTER DOWN
-    // =====================================================
-    joystick.addEventListener(
-      'pointerdown',
-      (e) => {
-        e.preventDefault();
-
-        if (activePointerId !== null) {
-          return;
+          dx *= scale;
+          dy *= scale;
         }
 
-        activePointerId =
-          e.pointerId;
+        aimStick.style.transform =
+          `translate(${dx}px, ${dy}px)`;
 
-        joystick.setPointerCapture?.(
-          e.pointerId
-        );
+        const length =
+          Math.hypot(dx, dy);
 
-        updateJoystick(e);
-      }
-    );
+        // Hindari noise di tengah joystick
+        if (length > 5) {
 
-    // =====================================================
-    // JOYSTICK POINTER MOVE
-    // =====================================================
-    joystick.addEventListener(
-      'pointermove',
-      (e) => {
-        if (
-          e.pointerId !==
-          activePointerId
-        ) {
-          return;
+          this.mobileAim.x =
+            dx / length;
+
+          this.mobileAim.y =
+            dy / length;
         }
+      };
 
-        e.preventDefault();
+      aimJoystick.addEventListener(
+        'pointerdown',
+        (e) => {
 
-        updateJoystick(e);
-      }
-    );
+          e.preventDefault();
 
-    // =====================================================
-    // JOYSTICK POINTER UP
-    // =====================================================
-    joystick.addEventListener(
-      'pointerup',
-      (e) => {
-        if (
-          e.pointerId !==
-          activePointerId
-        ) {
-          return;
+          if (aimPointerId !== null) {
+            return;
+          }
+
+          aimPointerId =
+            e.pointerId;
+
+          aimJoystick
+            .setPointerCapture?.(
+              e.pointerId
+            );
+
+          updateAim(e);
         }
+      );
 
-        e.preventDefault();
+      aimJoystick.addEventListener(
+        'pointermove',
+        (e) => {
 
-        resetJoystick();
-      }
-    );
+          if (
+            e.pointerId !==
+            aimPointerId
+          ) {
+            return;
+          }
 
-    // Kalau touch dibatalkan browser
-    joystick.addEventListener(
-      'pointercancel',
-      (e) => {
-        if (
-          e.pointerId !==
-          activePointerId
-        ) {
-          return;
+          e.preventDefault();
+
+          updateAim(e);
         }
+      );
 
-        resetJoystick();
-      }
-    );
+      aimJoystick.addEventListener(
+        'pointerup',
+        (e) => {
 
-    // =====================================================
-    // TOMBOL PAUSE MOBILE
-    // =====================================================
+          if (
+            e.pointerId !==
+            aimPointerId
+          ) {
+            return;
+          }
+
+          resetAim();
+        }
+      );
+
+      aimJoystick.addEventListener(
+        'pointercancel',
+        resetAim
+      );
+    }
+
+    // =========================
+    // PAUSE
+    // =========================
+
     if (pauseButton) {
+
       pauseButton.addEventListener(
         'pointerdown',
         (e) => {
+
           e.preventDefault();
 
-          // Meniru tombol ESC
-          // Game.js tetap memakai sistem pause lama
           this.justPressed.Escape = true;
         }
       );
     }
 
-    // =====================================================
-    // TOMBOL FIRE MOBILE
-    // =====================================================
+    // =========================
+    // FIRE
+    // =========================
+
     if (fireButton) {
+
       fireButton.addEventListener(
         'pointerdown',
         (e) => {
+
           e.preventDefault();
 
-          // Meniru klik kiri mouse
           this.mouseDown = true;
 
-          fireButton.setPointerCapture?.(
-            e.pointerId
-          );
+          fireButton
+            .setPointerCapture?.(
+              e.pointerId
+            );
         }
       );
 
       fireButton.addEventListener(
         'pointerup',
-        (e) => {
-          e.preventDefault();
+        () => {
 
           this.mouseDown = false;
         }
@@ -291,6 +454,7 @@ export class Input {
       fireButton.addEventListener(
         'pointercancel',
         () => {
+
           this.mouseDown = false;
         }
       );
@@ -298,18 +462,22 @@ export class Input {
       fireButton.addEventListener(
         'lostpointercapture',
         () => {
+
           this.mouseDown = false;
         }
       );
     }
 
-    // =====================================================
-    // RESET SAAT APP KEHILANGAN FOKUS
-    // =====================================================
+    // =========================
+    // RESET
+    // =========================
+
     window.addEventListener(
       'blur',
       () => {
-        resetJoystick();
+
+        this.mobileMove.x = 0;
+        this.mobileMove.y = 0;
 
         this.mouseDown = false;
       }
@@ -318,8 +486,11 @@ export class Input {
     document.addEventListener(
       'visibilitychange',
       () => {
+
         if (document.hidden) {
-          resetJoystick();
+
+          this.mobileMove.x = 0;
+          this.mobileMove.y = 0;
 
           this.mouseDown = false;
         }
@@ -327,21 +498,18 @@ export class Input {
     );
   }
 
-  // =========================================================
-  // HELPER
-  // =========================================================
+  // =====================================================
+  // HELPERS
+  // =====================================================
 
-  // Apakah tombol sedang ditekan?
   isDown(code) {
     return !!this.keys[code];
   }
 
-  // Apakah tombol baru saja ditekan frame ini?
   wasJustPressed(code) {
     return !!this.justPressed[code];
   }
 
-  // Dipanggil Game.js di akhir setiap frame
   clearFrame() {
     this.justPressed = {};
   }

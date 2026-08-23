@@ -11,35 +11,39 @@
   <canvas id="gameCanvas"></canvas>
 
   <!-- Kontrol khusus HP -->
-  <div id="mobileControls" aria-hidden="true">
+  <div id="mobileControls">
 
-    <!-- Joystick gerak -->
-    <div id="moveJoystick" class="joystick" aria-label="Joystick gerak">
-      <div class="joystick-ring"></div>
-      <div id="moveStick" class="joystick-stick"></div>
-    </div>
-
-    <!-- Pause -->
-    <button
-      id="mobilePauseButton"
-      class="mobile-pause"
-      type="button"
-      aria-label="Pause"
-    >
-      II
-    </button>
-
-    <!-- Tembak -->
-    <button
-      id="mobileFireButton"
-      class="mobile-fire"
-      type="button"
-      aria-label="Fire"
-    >
-      FIRE
-    </button>
-
+  <!-- JOYSTICK GERAK -->
+  <div id="moveJoystick" class="joystick">
+    <div class="joystick-ring"></div>
+    <div id="moveStick" class="joystick-stick"></div>
   </div>
+
+  <!-- JOYSTICK AIM -->
+  <div id="aimJoystick" class="aim-joystick">
+    <div class="joystick-ring"></div>
+    <div id="aimStick" class="joystick-stick"></div>
+  </div>
+
+  <!-- PAUSE -->
+  <button
+    id="mobilePauseButton"
+    class="mobile-pause"
+    type="button"
+  >
+    II
+  </button>
+
+  <!-- FIRE -->
+  <button
+    id="mobileFireButton"
+    class="mobile-fire"
+    type="button"
+  >
+    FIRE
+  </button>
+
+</div>
 
   <script type="module" src="./js/main.js"></script>
 </body>

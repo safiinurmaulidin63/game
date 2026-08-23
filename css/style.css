@@ -171,3 +171,15 @@ html, body {
 .touch-device #mobileControls {
   display: block;
 }
+.aim-joystick {
+  position: absolute;
+
+  right: max(28px, env(safe-area-inset-right));
+  bottom: max(145px, env(safe-area-inset-bottom));
+
+  width: 132px;
+  height: 132px;
+
+  pointer-events: auto;
+  touch-action: none;
+}

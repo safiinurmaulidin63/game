@@ -77,8 +77,35 @@ export class Player {
     }
 
     // Sistem aim mouse tetap dipertahankan.
-    const mouseWorld = camera.screenToWorld(input.mouse.x, input.mouse.y);
-    this.angle = Math.atan2(mouseWorld.y - this.y, mouseWorld.x - this.x);
+    const isTouchDevice =
+  document.body.classList.contains(
+    'touch-device'
+  );
+
+if (isTouchDevice) {
+
+  // HP menggunakan joystick aim
+  this.angle =
+    Math.atan2(
+      input.mobileAim.y,
+      input.mobileAim.x
+    );
+
+} else {
+
+  // PC tetap menggunakan mouse
+  const mouseWorld =
+    camera.screenToWorld(
+      input.mouse.x,
+      input.mouse.y
+    );
+
+  this.angle =
+    Math.atan2(
+      mouseWorld.y - this.y,
+      mouseWorld.x - this.x
+    );
+}
 
     if (tileMap && tileMap.isHazardAtWorld(this.x, this.y)) {
       this.takeDamage(this.hazardDamage);

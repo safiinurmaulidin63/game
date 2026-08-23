@@ -36,16 +36,13 @@ export class Input {
 
     this._bindEvents();
 
-    // Deteksi HP / touchscreen
     const isTouchDevice =
       'ontouchstart' in window ||
       navigator.maxTouchPoints > 0 ||
       window.matchMedia('(pointer: coarse)').matches;
 
     if (isTouchDevice) {
-      document.body.classList.add(
-        'touch-device'
-      );
+      document.body.classList.add('touch-device');
     }
 
     this._bindMobileControls();
@@ -55,140 +52,82 @@ export class Input {
   // KEYBOARD + MOUSE
   // =====================================================
   _bindEvents() {
-
-    window.addEventListener(
-      'keydown',
-      (e) => {
-
-        if (!this.keys[e.code]) {
-          this.justPressed[e.code] = true;
-        }
-
-        this.keys[e.code] = true;
+    window.addEventListener('keydown', (e) => {
+      if (!this.keys[e.code]) {
+        this.justPressed[e.code] = true;
       }
-    );
 
-    window.addEventListener(
-      'keyup',
-      (e) => {
+      this.keys[e.code] = true;
+    });
 
-        this.keys[e.code] = false;
+    window.addEventListener('keyup', (e) => {
+      this.keys[e.code] = false;
+    });
+
+    this.canvas.addEventListener('mousemove', (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+
+      this.mouse.x = e.clientX - rect.left;
+      this.mouse.y = e.clientY - rect.top;
+    });
+
+    this.canvas.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        this.mouseDown = true;
       }
-    );
+    });
 
-    this.canvas.addEventListener(
-      'mousemove',
-      (e) => {
-
-        const rect =
-          this.canvas.getBoundingClientRect();
-
-        this.mouse.x =
-          e.clientX - rect.left;
-
-        this.mouse.y =
-          e.clientY - rect.top;
-      }
-    );
-
-    this.canvas.addEventListener(
-      'mousedown',
-      (e) => {
-
-        if (e.button === 0) {
-          this.mouseDown = true;
-        }
-      }
-    );
-
-    this.canvas.addEventListener(
-      'mouseup',
-      (e) => {
-
-        if (e.button === 0) {
-          this.mouseDown = false;
-        }
-      }
-    );
-
-    this.canvas.addEventListener(
-      'mouseleave',
-      () => {
-
+    this.canvas.addEventListener('mouseup', (e) => {
+      if (e.button === 0) {
         this.mouseDown = false;
       }
-    );
+    });
+
+    this.canvas.addEventListener('mouseleave', () => {
+      this.mouseDown = false;
+    });
   }
 
   // =====================================================
-  // MOBILE
+  // MOBILE CONTROLS
   // =====================================================
   _bindMobileControls() {
-
     const moveJoystick =
-      document.getElementById(
-        'moveJoystick'
-      );
+      document.getElementById('moveJoystick');
 
     const moveStick =
-      document.getElementById(
-        'moveStick'
-      );
+      document.getElementById('moveStick');
 
     const aimJoystick =
-      document.getElementById(
-        'aimJoystick'
-      );
+      document.getElementById('aimJoystick');
 
     const aimStick =
-      document.getElementById(
-        'aimStick'
-      );
+      document.getElementById('aimStick');
 
     const pauseButton =
-      document.getElementById(
-        'mobilePauseButton'
-      );
+      document.getElementById('mobilePauseButton');
 
     const fireButton =
-      document.getElementById(
-        'mobileFireButton'
-      );
+      document.getElementById('mobileFireButton');
 
-    // =========================
-    // JOYSTICK GERAK
-    // =========================
+    // ===================================================
+    // JOYSTICK KIRI
+    // ===================================================
+
+    let movePointerId = null;
 
     if (moveJoystick && moveStick) {
-
-      let movePointerId = null;
-
       const maxDistance = 46;
 
-      const resetMove = () => {
-
-        movePointerId = null;
-
-        this.mobileMove.x = 0;
-        this.mobileMove.y = 0;
-
-        moveStick.style.transform =
-          'translate(0px, 0px)';
-      };
-
       const updateMove = (e) => {
-
         const rect =
-          moveJoystick
-            .getBoundingClientRect();
+          moveJoystick.getBoundingClientRect();
 
         const centerX =
-          rect.left +
-          rect.width / 2;
+          rect.left + rect.width / 2;
 
         const centerY =
-          rect.top +
-          rect.height / 2;
+          rect.top + rect.height / 2;
 
         let dx =
           e.clientX - centerX;
@@ -200,7 +139,6 @@ export class Input {
           Math.hypot(dx, dy);
 
         if (distance > maxDistance) {
-
           const scale =
             maxDistance / distance;
 
@@ -218,35 +156,36 @@ export class Input {
           dy / maxDistance;
       };
 
+      const resetMove = () => {
+        movePointerId = null;
+
+        this.mobileMove.x = 0;
+        this.mobileMove.y = 0;
+
+        moveStick.style.transform =
+          'translate(0px, 0px)';
+      };
+
       moveJoystick.addEventListener(
         'pointerdown',
         (e) => {
-
           e.preventDefault();
 
           if (movePointerId !== null) {
             return;
           }
 
-          movePointerId =
-            e.pointerId;
-
-          moveJoystick
-            .setPointerCapture?.(
-              e.pointerId
-            );
+          movePointerId = e.pointerId;
 
           updateMove(e);
         }
       );
 
-      moveJoystick.addEventListener(
+      window.addEventListener(
         'pointermove',
         (e) => {
-
           if (
-            e.pointerId !==
-            movePointerId
+            e.pointerId !== movePointerId
           ) {
             return;
           }
@@ -254,16 +193,15 @@ export class Input {
           e.preventDefault();
 
           updateMove(e);
-        }
+        },
+        { passive: false }
       );
 
-      moveJoystick.addEventListener(
+      window.addEventListener(
         'pointerup',
         (e) => {
-
           if (
-            e.pointerId !==
-            movePointerId
+            e.pointerId !== movePointerId
           ) {
             return;
           }
@@ -272,43 +210,38 @@ export class Input {
         }
       );
 
-      moveJoystick.addEventListener(
+      window.addEventListener(
         'pointercancel',
-        resetMove
+        (e) => {
+          if (
+            e.pointerId !== movePointerId
+          ) {
+            return;
+          }
+
+          resetMove();
+        }
       );
     }
 
-    // =========================
-    // JOYSTICK AIM
-    // =========================
+    // ===================================================
+    // JOYSTICK AIM KANAN
+    // ===================================================
+
+    let aimPointerId = null;
 
     if (aimJoystick && aimStick) {
-
-      let aimPointerId = null;
-
       const maxDistance = 46;
 
-      const resetAim = () => {
-
-        aimPointerId = null;
-
-        aimStick.style.transform =
-          'translate(0px, 0px)';
-      };
-
       const updateAim = (e) => {
-
         const rect =
-          aimJoystick
-            .getBoundingClientRect();
+          aimJoystick.getBoundingClientRect();
 
         const centerX =
-          rect.left +
-          rect.width / 2;
+          rect.left + rect.width / 2;
 
         const centerY =
-          rect.top +
-          rect.height / 2;
+          rect.top + rect.height / 2;
 
         let dx =
           e.clientX - centerX;
@@ -320,7 +253,6 @@ export class Input {
           Math.hypot(dx, dy);
 
         if (distance > maxDistance) {
-
           const scale =
             maxDistance / distance;
 
@@ -334,9 +266,7 @@ export class Input {
         const length =
           Math.hypot(dx, dy);
 
-        // Hindari noise di tengah joystick
         if (length > 5) {
-
           this.mobileAim.x =
             dx / length;
 
@@ -345,35 +275,33 @@ export class Input {
         }
       };
 
+      const resetAim = () => {
+        aimPointerId = null;
+
+        aimStick.style.transform =
+          'translate(0px, 0px)';
+      };
+
       aimJoystick.addEventListener(
         'pointerdown',
         (e) => {
-
           e.preventDefault();
 
           if (aimPointerId !== null) {
             return;
           }
 
-          aimPointerId =
-            e.pointerId;
-
-          aimJoystick
-            .setPointerCapture?.(
-              e.pointerId
-            );
+          aimPointerId = e.pointerId;
 
           updateAim(e);
         }
       );
 
-      aimJoystick.addEventListener(
+      window.addEventListener(
         'pointermove',
         (e) => {
-
           if (
-            e.pointerId !==
-            aimPointerId
+            e.pointerId !== aimPointerId
           ) {
             return;
           }
@@ -381,16 +309,15 @@ export class Input {
           e.preventDefault();
 
           updateAim(e);
-        }
+        },
+        { passive: false }
       );
 
-      aimJoystick.addEventListener(
+      window.addEventListener(
         'pointerup',
         (e) => {
-
           if (
-            e.pointerId !==
-            aimPointerId
+            e.pointerId !== aimPointerId
           ) {
             return;
           }
@@ -399,22 +326,28 @@ export class Input {
         }
       );
 
-      aimJoystick.addEventListener(
+      window.addEventListener(
         'pointercancel',
-        resetAim
+        (e) => {
+          if (
+            e.pointerId !== aimPointerId
+          ) {
+            return;
+          }
+
+          resetAim();
+        }
       );
     }
 
-    // =========================
+    // ===================================================
     // PAUSE
-    // =========================
+    // ===================================================
 
     if (pauseButton) {
-
       pauseButton.addEventListener(
         'pointerdown',
         (e) => {
-
           e.preventDefault();
 
           this.justPressed.Escape = true;
@@ -422,30 +355,24 @@ export class Input {
       );
     }
 
-    // =========================
+    // ===================================================
     // FIRE
-    // =========================
+    // ===================================================
 
     if (fireButton) {
-
       fireButton.addEventListener(
         'pointerdown',
         (e) => {
-
           e.preventDefault();
 
           this.mouseDown = true;
-
-          fireButton
-            .setPointerCapture?.(
-              e.pointerId
-            );
         }
       );
 
       fireButton.addEventListener(
         'pointerup',
-        () => {
+        (e) => {
+          e.preventDefault();
 
           this.mouseDown = false;
         }
@@ -454,48 +381,34 @@ export class Input {
       fireButton.addEventListener(
         'pointercancel',
         () => {
-
-          this.mouseDown = false;
-        }
-      );
-
-      fireButton.addEventListener(
-        'lostpointercapture',
-        () => {
-
           this.mouseDown = false;
         }
       );
     }
 
-    // =========================
-    // RESET
-    // =========================
+    // ===================================================
+    // RESET JIKA GAME KEHILANGAN FOKUS
+    // ===================================================
 
-    window.addEventListener(
-      'blur',
-      () => {
+    window.addEventListener('blur', () => {
+      this.mobileMove.x = 0;
+      this.mobileMove.y = 0;
 
-        this.mobileMove.x = 0;
-        this.mobileMove.y = 0;
+      this.mouseDown = false;
 
-        this.mouseDown = false;
+      if (moveStick) {
+        moveStick.style.transform =
+          'translate(0px, 0px)';
       }
-    );
 
-    document.addEventListener(
-      'visibilitychange',
-      () => {
-
-        if (document.hidden) {
-
-          this.mobileMove.x = 0;
-          this.mobileMove.y = 0;
-
-          this.mouseDown = false;
-        }
+      if (aimStick) {
+        aimStick.style.transform =
+          'translate(0px, 0px)';
       }
-    );
+
+      movePointerId = null;
+      aimPointerId = null;
+    });
   }
 
   // =====================================================

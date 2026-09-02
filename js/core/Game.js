@@ -14,7 +14,7 @@ import { soundManager } from './SoundManager.js';
 const MAX_FLOOR = 7; // lantai ke-7 = lantai boss
 
 export class Game {
-  constructor(canvas) {
+  constructor(canvas, characterId = 'swordsman') {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     this.ctx.imageSmoothingEnabled = false; // pixel-art tetap tajam saat sprite di-scale
@@ -23,7 +23,7 @@ export class Game {
     window.addEventListener('resize', () => this._resizeCanvas());
 
     this.input = new Input(canvas);
-    this.player = new Player(0, 0);
+    this.player = new Player(0, 0, characterId);
     this.camera = new Camera(canvas);
     this.weapon = new Weapon();
     this.enemyManager = new EnemyManager();
@@ -132,13 +132,11 @@ export class Game {
       return;
     }
 
-    // Toggle pause (P atau ESC) — tidak berlaku di layar game over/menang,
-    // makanya pengecekan ini setelah return di atas
     if (this.input.wasJustPressed('KeyP') || this.input.wasJustPressed('Escape')) {
       this.paused = !this.paused;
     }
 
-    if (this.paused) return; // bekukan semua logic, tapi _draw() tetap jalan (freeze-frame + overlay)
+    if (this.paused) return;
 
     if (this.player.hp <= 0) {
       this.gameOver = true;
@@ -264,25 +262,26 @@ export class Game {
     ctx.fillText(`HP: ${Math.ceil(this.player.hp)} / ${this.player.maxHp}`, x, y - 6);
 
     ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(`Skor: ${this.score}`, x, y + barHeight + 20);
+    ctx.fillText(`${this.player.characterName} • ${this.player.weaponLabel}`, x, y + barHeight + 20);
+    ctx.fillText(`Skor: ${this.score}`, x, y + barHeight + 42);
 
     const floorLabel =
       this.floor === MAX_FLOOR
         ? `Lantai ${this.floor} (BOSS)`
         : `Lantai ${this.floor} / ${MAX_FLOOR}`;
-    ctx.fillText(floorLabel, x, y + barHeight + 44);
+    ctx.fillText(floorLabel, x, y + barHeight + 66);
 
     if (this.floor < MAX_FLOOR && this.enemyManager.enemies.length === 0) {
       ctx.fillStyle = '#facc15';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText('Semua musuh tumbang! Cari tangga (▲) untuk lanjut.', x, y + barHeight + 68);
+      ctx.fillText('Semua musuh tumbang! Cari tangga (▲) untuk lanjut.', x, y + barHeight + 90);
     }
 
-    // Indikator mute + pause, pojok kiri bawah — kecil & tidak mengganggu
+    // Indikator mute, pojok kiri bawah — kecil & tidak mengganggu
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.font = '12px sans-serif';
     ctx.fillText(
-      `${soundManager.muted ? 'Suara: OFF' : 'Suara: ON'} (M)   Pause (P/ESC)`,
+      soundManager.muted ? 'Suara: OFF (M)' : 'Suara: ON (M)',
       x,
       this.canvas.height - 16
     );
@@ -329,29 +328,6 @@ export class Game {
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(allClear ? 'TANGGA ▲' : 'Tangga (bersihkan musuh)', cx, cy + radius + 16);
-    ctx.textAlign = 'left';
-  }
-
-  // Overlay pause: lebih transparan dari game over/victory (sengaja beda),
-  // supaya kelihatan jelas ini cuma "jeda", bukan akhir permainan — dunia
-  // di belakangnya masih kelihatan (freeze-frame), tidak digelapkan total.
-  _drawPauseOverlay(ctx) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 42px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
-
-    ctx.font = '18px sans-serif';
-    ctx.fillStyle = '#facc15';
-    ctx.fillText(
-      'Tekan P atau ESC untuk lanjut',
-      this.canvas.width / 2,
-      this.canvas.height / 2 + 36
-    );
-
     ctx.textAlign = 'left';
   }
 

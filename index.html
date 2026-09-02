@@ -10,10 +10,10 @@
 
   <title>RPG Prototype</title>
 
-  <!-- v=11 untuk memaksa browser mengambil CSS terbaru -->
+  <!-- Ganti v setiap kali mau paksa CSS terbaru -->
   <link
     rel="stylesheet"
-    href="./css/style.css?v=11"
+    href="./css/style.css?v=31"
   />
 </head>
 
@@ -24,22 +24,35 @@
   <div id="mobileControls">
 
     <!-- JOYSTICK GERAK -->
-    <div id="moveJoystick" class="joystick move-joystick">
-  <div class="joystick-ring"></div>
-  <div id="moveStick" class="joystick-stick"></div>
-</div>
+    <div
+      id="moveJoystick"
+      class="joystick move-joystick"
+    >
+      <div class="joystick-ring"></div>
+      <div
+        id="moveStick"
+        class="joystick-stick"
+      ></div>
+    </div>
 
     <!-- JOYSTICK AIM -->
-    <div id="aimJoystick" class="joystick aim-joystick">
-  <div class="joystick-ring"></div>
-  <div id="aimStick" class="joystick-stick"></div>
-</div>
+    <div
+      id="aimJoystick"
+      class="joystick aim-joystick"
+    >
+      <div class="joystick-ring"></div>
+      <div
+        id="aimStick"
+        class="joystick-stick"
+      ></div>
+    </div>
 
     <!-- PAUSE -->
     <button
       id="mobilePauseButton"
       class="mobile-pause"
       type="button"
+      aria-label="Pause"
     >
       II
     </button>
@@ -49,16 +62,17 @@
       id="mobileFireButton"
       class="mobile-fire"
       type="button"
+      aria-label="Fire"
     >
       FIRE
     </button>
 
   </div>
 
-  <!-- Paksa JS utama ikut refresh -->
+  <!-- Ganti v juga supaya JS terbaru dipaksa reload -->
   <script
     type="module"
-    src="./js/main.js?v=11"
+    src="./js/main.js?v=31"
   ></script>
 
 </body>

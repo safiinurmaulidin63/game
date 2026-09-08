@@ -38,6 +38,9 @@ export class Game {
     this.victory = false;
     this.paused = false;
 
+    // Final floor state.
+    this.finalBossDefeated = false;
+
     // --- Compass: arah panah menuju tangga, dihitung lewat BFS TileMap ---
     this._compassPath = null;
     this._compassTimer = 0;
@@ -62,6 +65,10 @@ export class Game {
   // & isi ulang musuh sesuai lantai, taruh player balik ke tengah.
   _setupFloor(floorNumber) {
     const isBossFloor = floorNumber === MAX_FLOOR;
+
+    if (isBossFloor) {
+      this.finalBossDefeated = false;
+    }
 
     // Lantai boss: ruangan terbuka. Lantai lain: labirin acak (lihat TileMap.js)
     this.tileMap = new TileMap(!isBossFloor, floorNumber);
@@ -98,6 +105,104 @@ export class Game {
       ]);
     }
 
+    if (floorNumber === 2) {
+      this.storyManager.show('level2-intro', [
+        {
+          speaker: this.player.characterName,
+          text: 'Lorong ini bercabang dua... dan keduanya terlihat masih aktif.'
+        },
+        {
+          speaker: 'Misterious Dungeon',
+          text: 'Dua segel kuno menjaga jalan menuju bagian dungeon yang lebih dalam.'
+        }
+      ]);
+    }
+
+    if (floorNumber === 3) {
+      this.storyManager.show('level3-intro', [
+        {
+          speaker: this.player.characterName,
+          text: 'Simbol-simbol di lantai ini berbeda dari yang sebelumnya...'
+        },
+        {
+          speaker: 'Misterious Dungeon',
+          text: 'Tiga rune kuno menunggu urutan yang telah lama dilupakan.'
+        }
+      ]);
+    }
+
+    if (floorNumber === 4) {
+      this.storyManager.show('level4-intro', [
+        {
+          speaker: this.player.characterName,
+          text: 'Ada sisa peralatan manusia di sini... Seseorang pernah membuat kemah di lantai ini.'
+        },
+        {
+          speaker: 'Misterious Dungeon',
+          text: 'Empat obor tua masih terhubung pada mekanisme gerbang ritual.'
+        }
+      ]);
+    }
+
+    if (floorNumber === 5) {
+      this.storyManager.show('level5-intro', [
+        {
+          speaker: this.player.characterName,
+          text: 'Segelnya benar-benar hancur di sini... Energinya bahkan terasa dari lantai.'
+        },
+        {
+          speaker: 'Misterious Dungeon',
+          text: 'Tiga pecahan segel tersebar di katakombe. Altar pusat menunggu bagian yang hilang.'
+        }
+      ]);
+    }
+
+    if (floorNumber === 6) {
+      this.storyManager.show('level6-intro', [
+        {
+          speaker: this.player.characterName,
+          text: 'Energinya jauh lebih kuat di sini... Ini pasti Segel Keenam.'
+        },
+        {
+          speaker: 'Misterious Dungeon',
+          text: 'Jaringan rune tua, dua stabilizer, dan altar utama masih terhubung menuju pintu terakhir.'
+        }
+      ]);
+    }
+
+    if (floorNumber === 7) {
+      this.storyManager.show('level7-intro', [
+        {
+          speaker: 'Ancient Monument',
+          text: 'Enam segel mengikat kekuatan. Segel ketujuh mengikat penjaganya.'
+        },
+        {
+          speaker: this.player.characterName,
+          text: 'Jadi penjaganya sendiri adalah bagian dari segel...'
+        },
+        {
+          speaker: 'Aster',
+          text: 'Aku sudah menyuruhmu pergi.'
+        },
+        {
+          speaker: this.player.characterName,
+          text: 'Kamulah Aster.'
+        },
+        {
+          speaker: 'Aster',
+          text: 'Dulu.'
+        },
+        {
+          speaker: 'Aster',
+          text: 'Sekarang aku hanya bagian dari segel ini.'
+        },
+        {
+          speaker: 'Aster',
+          text: 'Energinya sudah terlalu jauh mengambil alih. Jangan mendekat.'
+        }
+      ]);
+    }
+
     // Sedikit heal tiap ganti lantai, reward kecil karena berhasil bertahan
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + 3);
 
@@ -121,6 +226,7 @@ export class Game {
     this.gameOver = false;
     this.victory = false;
     this.paused = false;
+    this.finalBossDefeated = false;
 
     this.player.hp = this.player.maxHp;
     this.player.invulnerableTimer = 0;
@@ -246,11 +352,34 @@ export class Game {
     const allEnemiesDead = this.enemyManager.enemies.length === 0;
 
     if (this.floor === MAX_FLOOR) {
-      // Lantai boss: menang begitu boss mati
-      if (allEnemiesDead) {
+      // Boss mati bukan langsung menang. Player masih harus memulihkan
+      // Seventh Seal melalui The Core.
+      if (
+        allEnemiesDead &&
+        !this.finalBossDefeated
+      ) {
+        this.finalBossDefeated = true;
+
+        if (this.puzzleManager) {
+          this.puzzleManager.onBossDefeated(this.player);
+        }
+
+        return;
+      }
+
+      // Victory baru diberikan setelah Core dipulihkan DAN dialog ending
+      // selesai dibaca.
+      if (
+        this.finalBossDefeated &&
+        this.puzzleManager &&
+        this.puzzleManager.isFinalSequenceComplete() &&
+        !this.storyManager.isActive() &&
+        !this.victory
+      ) {
         this.victory = true;
         soundManager.play('victory');
       }
+
       return;
     }
 
@@ -278,7 +407,9 @@ export class Game {
     this._drawHUD(ctx);
 
     if (this.gameOver) this._drawOverlay(ctx, 'GAME OVER', '#ef4444');
-    if (this.victory) this._drawOverlay(ctx, 'YOU WIN!', '#4ade80');
+    if (this.victory) {
+      this._drawFinalVictoryOverlay(ctx);
+    }
     if (this.paused) this._drawPauseOverlay(ctx);
 
     this.storyManager.draw(ctx);
@@ -382,6 +513,60 @@ export class Game {
     ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(allClear ? 'TANGGA ▲' : 'Tangga (bersihkan musuh)', cx, cy + radius + 16);
+    ctx.textAlign = 'left';
+  }
+
+  _drawFinalVictoryOverlay(ctx) {
+    ctx.fillStyle = 'rgba(8, 10, 20, 0.82)';
+    ctx.fillRect(
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height
+    );
+
+    ctx.textAlign = 'center';
+
+    ctx.fillStyle = '#c4b5fd';
+    ctx.font = 'bold 38px sans-serif';
+    ctx.fillText(
+      'THE SEVENTH SEAL',
+      this.canvas.width / 2,
+      this.canvas.height / 2 - 50
+    );
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = 'bold 28px sans-serif';
+    ctx.fillText(
+      'HAS BEEN RESTORED',
+      this.canvas.width / 2,
+      this.canvas.height / 2 - 10
+    );
+
+    ctx.font = '18px sans-serif';
+    ctx.fillStyle = '#fff';
+    ctx.fillText(
+      `Skor akhir: ${this.score}`,
+      this.canvas.width / 2,
+      this.canvas.height / 2 + 38
+    );
+
+    ctx.fillStyle = '#a78bfa';
+    ctx.font = 'bold 17px sans-serif';
+    ctx.fillText(
+      'TO BE CONTINUED...',
+      this.canvas.width / 2,
+      this.canvas.height / 2 + 76
+    );
+
+    ctx.fillStyle = '#facc15';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(
+      'Tekan R untuk main lagi',
+      this.canvas.width / 2,
+      this.canvas.height / 2 + 112
+    );
+
     ctx.textAlign = 'left';
   }
 

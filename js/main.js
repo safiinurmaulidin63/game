@@ -42,18 +42,83 @@ const manifest = {
   enemyRanged: './assets/enemies/ranged.png',
   enemyBrute: './assets/enemies/brute.png',
   enemySwarm: './assets/enemies/swarm.png',
-  boss: './assets/enemies/boss.png',
+  boss: './assets/enemies/aster_boss.png?v=aster7',
   tileFloor: './assets/tiles/floor.png',
   tileWall: './assets/tiles/wall.png',
   tileStairs: './assets/tiles/stairs.png',
   tileObstacle: './assets/tiles/obstacle.png',
   tileHazard: './assets/tiles/hazard.png',
 
+  // =====================================================
+  // CUSTOM DUNGEON VISUAL SYSTEM
+  // Floor variants
+  // =====================================================
+  tileFloor01: './assets/tiles/variants/floor_01.png?v=visual1',
+  tileFloor02: './assets/tiles/variants/floor_02.png?v=visual1',
+  tileFloor03: './assets/tiles/variants/floor_03.png?v=visual1',
+  tileFloor04: './assets/tiles/variants/floor_04.png?v=visual1',
+  tileFloor05: './assets/tiles/variants/floor_05.png?v=visual1',
+  tileFloor06: './assets/tiles/variants/floor_06.png?v=visual1',
+  tileFloor07: './assets/tiles/variants/floor_07.png?v=visual1',
+  tileFloor08: './assets/tiles/variants/floor_08.png?v=visual1',
+  tileFloor09: './assets/tiles/variants/floor_09.png?v=visual1',
+  tileFloor10: './assets/tiles/variants/floor_10.png?v=visual1',
+  tileFloor11: './assets/tiles/variants/floor_11.png?v=visual1',
+  tileFloor12: './assets/tiles/variants/floor_12.png?v=visual1',
+
+  // Wall overlays/detail. Wall utama tetap tileWall agar collision
+  // dan bentuk map tidak berubah.
+  wallDetail01: './assets/tiles/variants/wall_01.png?v=visual1',
+  wallDetail02: './assets/tiles/variants/wall_02.png?v=visual1',
+  wallDetail03: './assets/tiles/variants/wall_03.png?v=visual1',
+  wallDetail04: './assets/tiles/variants/wall_04.png?v=visual1',
+  wallDetail05: './assets/tiles/variants/wall_05.png?v=visual1',
+  wallDetail06: './assets/tiles/variants/wall_06.png?v=visual1',
+  wallDetail07: './assets/tiles/variants/wall_07.png?v=visual1',
+  wallDetail08: './assets/tiles/variants/wall_08.png?v=visual1',
+
+  // Props/dekorasi.
+  propBones: './assets/props/bones.png?v=visual1',
+  propSmallRocks: './assets/props/small_rocks.png?v=visual1',
+  propUrn: './assets/props/urn.png?v=visual1',
+  propCrackedBlock: './assets/props/cracked_block.png?v=visual1',
+  propRubbleBlock: './assets/props/rubble_block.png?v=visual1',
+  propMossBlock: './assets/props/moss_block.png?v=visual1',
+  propFloorRune: './assets/props/floor_rune.png?v=visual1',
+  propFloorGrate: './assets/props/floor_grate.png?v=visual1',
+
+  // Dungeon magical details.
+  propCrystal: './assets/puzzle/crystal.png?v=visual1',
+  propTorchOn: './assets/puzzle/torch_on.png?v=visual1',
+  propTorchOff: './assets/puzzle/torch_off.png?v=torch4',
+  propAltarInactive: './assets/puzzle/altar_inactive.png?v=visual1',
+  propAltarActive: './assets/puzzle/altar_active.png?v=altar5',
+  sealFragment: './assets/puzzle/seal_fragment.png?v=fragment5',
+
   // Puzzle + story.
-  puzzleSwitch: './assets/puzzle/switch_pressure.png',
+  puzzleSwitchOff: './assets/puzzle/pressure_switch_off.png?v=custom1',
+  puzzleSwitchOn: './assets/puzzle/pressure_switch_on.png?v=custom1',
+
+  // Level 2: segel Matahari & Bulan.
+  puzzleSunOff: './assets/puzzle/sun_switch_off.png?v=sunmoon1',
+  puzzleSunOn: './assets/puzzle/sun_switch_on.png?v=sunmoon1',
+  puzzleMoonOff: './assets/puzzle/moon_switch_off.png?v=sunmoon1',
+  puzzleMoonOn: './assets/puzzle/moon_switch_on.png?v=sunmoon1',
+
+  // Level 3: rune Bintang.
+  puzzleStarOff: './assets/puzzle/star_switch_off.png?v=rune3',
+  puzzleStarOn: './assets/puzzle/star_switch_on.png?v=rune3',
   sealedDoorClosed: './assets/puzzle/sealed_door_closed.png',
   sealedDoorOpen: './assets/puzzle/sealed_door_open.png',
-  ancientTablet: './assets/story/ancient_tablet.png',
+
+  // Story props custom.
+  dungeonMonument: './assets/story/dungeon_monument.png?v=monument1',
+  expeditionJournal: './assets/story/expedition_journal.png?v=journal1',
+
+  // Level 7 finale.
+  theCore: './assets/story/the_core.png?v=core7',
+  theCoreRestored: './assets/story/the_core_restored.png?v=core7',
+
   dialogueBox: './assets/ui/dialoguebox1.png',
   playerBullet: './assets/projectiles/player_bullet.png',
   enemyBullet: './assets/projectiles/enemy_bullet.png',

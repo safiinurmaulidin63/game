@@ -31,7 +31,12 @@ export class TileMap {
     this.switchTiles = [];
     this.doorTiles = [];
     this.tabletTiles = [];
+    this.manualDecorTiles = [];
     this.sealedDoorOpen = false;
+
+    // Visual-only decorations. Tidak memengaruhi collision/gameplay.
+    this.floorDecorations = [];
+    this.wallDecorations = [];
 
     if (hasLevelLayout(this.floorNumber)) {
       // =========================
@@ -52,6 +57,7 @@ export class TileMap {
       this.switchTiles = level.switchTiles;
       this.doorTiles = level.doorTiles;
       this.tabletTiles = level.tabletTiles;
+      this.manualDecorTiles = level.decorTiles;
 
       this.originX = (this.cols * this.tileSize) / 2;
       this.originY = (this.rows * this.tileSize) / 2;
@@ -102,6 +108,11 @@ export class TileMap {
 
     // Dipakai EnemyManager untuk mencari posisi spawn valid.
     this.reachableOpenCells = this._computeReachableOpenCells();
+
+    // Dibuat sekali saat lantai dibuat supaya dekorasi tidak berubah-ubah
+    // setiap frame.
+    this.floorDecorations = this._buildFloorDecorations();
+    this.wallDecorations = this._buildWallDecorations();
   }
 
   // =====================================================
@@ -138,6 +149,7 @@ export class TileMap {
     const switchTiles = [];
     const doorTiles = [];
     const tabletTiles = [];
+    const decorTiles = [];
 
     for (let row = 0; row < rows.length; row++) {
       const line = rows[row];
@@ -171,9 +183,13 @@ export class TileMap {
             break;
 
           case 'K':
-          case 'B':
-            // Dekorasi belum digambar pada tahap ini.
             grid[row][col] = 0;
+            decorTiles.push({ col, row, type: 'crystal' });
+            break;
+
+          case 'B':
+            grid[row][col] = 0;
+            decorTiles.push({ col, row, type: 'bones' });
             break;
 
           case 'X':
@@ -227,6 +243,7 @@ export class TileMap {
       switchTiles,
       doorTiles,
       tabletTiles,
+      decorTiles,
     };
   }
 
@@ -902,6 +919,411 @@ export class TileMap {
     return pool.slice(0, count);
   }
 
+
+  // =====================================================
+  // VISUAL THEME SYSTEM
+  // =====================================================
+
+  _visualTheme() {
+    const themes = {
+      1: {
+        name: 'Forgotten Entrance',
+        floors: ['tileFloor01', 'tileFloor01', 'tileFloor02', 'tileFloor03', 'tileFloor05'],
+        rareFloors: ['tileFloor10'],
+        rareChance: 3,
+        wallDetails: ['wallDetail01', 'wallDetail02', 'wallDetail03'],
+        wallDetailChance: 9,
+        obstacleKeys: ['propCrackedBlock', 'propCrackedBlock', 'propRubbleBlock'],
+        props: ['propSmallRocks', 'propUrn', 'propBones'],
+        propChance: 13,
+        torchChance: 5,
+      },
+      2: {
+        name: 'Twin Seal Hall',
+        floors: ['tileFloor01', 'tileFloor02', 'tileFloor03', 'tileFloor06'],
+        rareFloors: ['tileFloor11'],
+        rareChance: 5,
+        wallDetails: ['wallDetail01', 'wallDetail03', 'wallDetail07'],
+        wallDetailChance: 11,
+        obstacleKeys: ['propCrackedBlock', 'propRubbleBlock'],
+        props: ['propSmallRocks', 'propCrystal'],
+        propChance: 11,
+        torchChance: 7,
+      },
+      3: {
+        name: 'Old Prison Corridors',
+        floors: ['tileFloor02', 'tileFloor03', 'tileFloor05', 'tileFloor06'],
+        rareFloors: ['tileFloor12', 'tileFloor10'],
+        rareChance: 7,
+        wallDetails: ['wallDetail02', 'wallDetail04', 'wallDetail05', 'wallDetail08'],
+        wallDetailChance: 14,
+        obstacleKeys: ['propRubbleBlock', 'propCrackedBlock'],
+        props: ['propBones', 'propUrn', 'propSmallRocks'],
+        propChance: 18,
+        torchChance: 4,
+      },
+      4: {
+        name: 'Forbidden Ritual',
+        floors: ['tileFloor02', 'tileFloor03', 'tileFloor04', 'tileFloor06'],
+        rareFloors: ['tileFloor11'],
+        rareChance: 8,
+        wallDetails: ['wallDetail01', 'wallDetail03', 'wallDetail07'],
+        wallDetailChance: 12,
+        obstacleKeys: ['propCrackedBlock', 'propRubbleBlock'],
+        props: ['propCrystal', 'propBones', 'propUrn'],
+        propChance: 16,
+        torchChance: 14,
+      },
+      5: {
+        name: 'Cracked Catacombs',
+        floors: ['tileFloor04', 'tileFloor07', 'tileFloor09', 'tileFloor10'],
+        rareFloors: ['tileFloor08', 'tileFloor12'],
+        rareChance: 9,
+        wallDetails: ['wallDetail02', 'wallDetail04', 'wallDetail06', 'wallDetail08'],
+        wallDetailChance: 17,
+        obstacleKeys: ['propMossBlock', 'propRubbleBlock', 'propCrackedBlock'],
+        props: ['propBones', 'propSmallRocks', 'propUrn'],
+        propChance: 22,
+        torchChance: 5,
+      },
+      6: {
+        name: 'Cursed Crystal Depths',
+        floors: ['tileFloor03', 'tileFloor04', 'tileFloor07', 'tileFloor09'],
+        rareFloors: ['tileFloor11'],
+        rareChance: 9,
+        wallDetails: ['wallDetail01', 'wallDetail03', 'wallDetail07'],
+        wallDetailChance: 13,
+        obstacleKeys: ['propRubbleBlock', 'propMossBlock'],
+        props: ['propCrystal', 'propCrystal', 'propSmallRocks'],
+        propChance: 20,
+        torchChance: 10,
+      },
+      7: {
+        name: 'Seventh Seal Throne',
+        floors: ['tileFloor01', 'tileFloor02', 'tileFloor03', 'tileFloor06'],
+        rareFloors: ['tileFloor11'],
+        rareChance: 5,
+        wallDetails: ['wallDetail01', 'wallDetail02', 'wallDetail03', 'wallDetail07'],
+        wallDetailChance: 15,
+        obstacleKeys: ['propCrackedBlock', 'propRubbleBlock'],
+        props: ['propCrystal', 'propSmallRocks'],
+        propChance: 8,
+        torchChance: 13,
+      },
+    };
+
+    return themes[this.floorNumber] ?? themes[1];
+  }
+
+  _hashTile(col, row, salt = 0) {
+    let n =
+      Math.imul(col + 17, 73856093) ^
+      Math.imul(row + 29, 19349663) ^
+      Math.imul(this.floorNumber + 7, 83492791) ^
+      Math.imul(salt + 11, 2654435761);
+
+    n >>>= 0;
+    n ^= n >>> 16;
+    n = Math.imul(n, 2246822507);
+    n ^= n >>> 13;
+    n = Math.imul(n, 3266489909);
+    n ^= n >>> 16;
+
+    return n >>> 0;
+  }
+
+  _pickFrom(list, col, row, salt = 0) {
+    if (!list || list.length === 0) return null;
+    const i = this._hashTile(col, row, salt) % list.length;
+    return list[i];
+  }
+
+  _floorSpriteKey(col, row) {
+    const theme = this._visualTheme();
+
+    // Rune/grate/rare floor cukup jarang supaya tidak terlihat ramai.
+    const rareRoll = this._hashTile(col, row, 41) % 100;
+
+    if (
+      theme.rareFloors.length > 0 &&
+      rareRoll < theme.rareChance
+    ) {
+      return this._pickFrom(theme.rareFloors, col, row, 42);
+    }
+
+    return this._pickFrom(theme.floors, col, row, 43) ?? 'tileFloor';
+  }
+
+  _obstacleSpriteKey(col, row) {
+    const theme = this._visualTheme();
+    return this._pickFrom(theme.obstacleKeys, col, row, 51) ?? 'tileObstacle';
+  }
+
+  _wallDetailSpriteKey(col, row) {
+    const theme = this._visualTheme();
+    const roll = this._hashTile(col, row, 61) % 100;
+
+    if (roll >= theme.wallDetailChance) {
+      return null;
+    }
+
+    return this._pickFrom(theme.wallDetails, col, row, 62);
+  }
+
+  _isFloorLikeTile(col, row) {
+    if (!this._inBounds(col, row)) return false;
+
+    const tile = this.grid[row][col];
+
+    return (
+      tile === 0 ||
+      tile === 2 ||
+      tile === 3 ||
+      tile === 4 ||
+      tile === 6
+    );
+  }
+
+  _isReservedDecorationTile(col, row) {
+    const sameTile = (tile) =>
+      tile.col === col &&
+      tile.row === row;
+
+    if (
+      this.switchTiles.some(sameTile) ||
+      this.doorTiles.some(sameTile) ||
+      this.tabletTiles.some(sameTile)
+    ) {
+      return true;
+    }
+
+    if (
+      this.hasStairs &&
+      col === this.stairsCol &&
+      row === this.stairsRow
+    ) {
+      return true;
+    }
+
+    const startTile =
+      this._worldToTile(
+        this.startWorldPos.x,
+        this.startWorldPos.y
+      );
+
+    // Spawn player diberi area kosong 2 tile.
+    if (
+      Math.abs(col - startTile.col) <= 2 &&
+      Math.abs(row - startTile.row) <= 2
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
+  _buildFloorDecorations() {
+    const result = [];
+    const occupied = new Set();
+
+    const add = (col, row, spriteKey, size = 46, yOffset = 0) => {
+      const key = `${col},${row}`;
+      if (occupied.has(key)) return;
+      occupied.add(key);
+
+      result.push({
+        col,
+        row,
+        spriteKey,
+        size,
+        yOffset,
+      });
+    };
+
+    // Simbol K/B dari LevelData selalu dipakai dulu.
+    for (const item of this.manualDecorTiles) {
+      if (item.type === 'crystal') {
+        add(item.col, item.row, 'propCrystal', 52, -3);
+      }
+
+      if (item.type === 'bones') {
+        add(item.col, item.row, 'propBones', 48, 5);
+      }
+    }
+
+    const theme = this._visualTheme();
+
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (this.grid[row][col] !== 0) continue;
+        if (this._isReservedDecorationTile(col, row)) continue;
+
+        // Hindari memenuhi lorong sempit.
+        if (this._countOpenNeighbors(col, row) < 3) continue;
+
+        const roll = this._hashTile(col, row, 71) % 1000;
+
+        // propChance ditulis dalam kira-kira per-seribu.
+        if (roll >= theme.propChance) continue;
+
+        const spriteKey =
+          this._pickFrom(theme.props, col, row, 72);
+
+        if (!spriteKey) continue;
+
+        let size = 42;
+        let yOffset = 6;
+
+        if (spriteKey === 'propCrystal') {
+          size = 50;
+          yOffset = -2;
+        } else if (spriteKey === 'propBones') {
+          size = 46;
+          yOffset = 7;
+        } else if (spriteKey === 'propUrn') {
+          size = 40;
+          yOffset = 5;
+        } else if (spriteKey === 'propSmallRocks') {
+          size = 42;
+          yOffset = 10;
+        }
+
+        add(col, row, spriteKey, size, yOffset);
+      }
+    }
+
+    // Final floor dibuat lebih megah: empat rune visual simetris.
+    if (this.floorNumber === 7) {
+      const centerCol = Math.floor(this.cols / 2);
+      const centerRow = 15;
+
+      const runes = [
+        [centerCol - 7, centerRow - 5],
+        [centerCol + 7, centerRow - 5],
+        [centerCol - 7, centerRow + 6],
+        [centerCol + 7, centerRow + 6],
+      ];
+
+      for (const [col, row] of runes) {
+        if (
+          this._inBounds(col, row) &&
+          this.grid[row][col] === 0
+        ) {
+          add(col, row, 'propFloorRune', 64, 0);
+        }
+      }
+    }
+
+    return result;
+  }
+
+  _buildWallDecorations() {
+    const result = [];
+    const theme = this._visualTheme();
+
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        if (this.grid[row][col] !== 1) continue;
+
+        // Torch hanya ditempel di dinding yang punya lantai persis di bawahnya.
+        if (!this._isFloorLikeTile(col, row + 1)) continue;
+
+        const roll = this._hashTile(col, row, 81) % 1000;
+        if (roll >= theme.torchChance) continue;
+
+        result.push({
+          col,
+          row,
+          spriteKey: 'propTorchOn',
+          size: 46,
+          xOffset: 0,
+          yOffset: 16,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  _drawFloorBase(ctx, screen, col, row) {
+    const key = this._floorSpriteKey(col, row);
+    const sprite =
+      assetLoader.get(key) ??
+      assetLoader.get('tileFloor');
+
+    if (sprite) {
+      ctx.drawImage(
+        sprite,
+        screen.x,
+        screen.y,
+        this.tileSize,
+        this.tileSize
+      );
+    } else {
+      ctx.fillStyle = '#5f473c';
+      ctx.fillRect(
+        screen.x,
+        screen.y,
+        this.tileSize,
+        this.tileSize
+      );
+    }
+  }
+
+  _drawVisualDecorations(ctx, camera) {
+    for (const item of this.floorDecorations) {
+      const worldX =
+        item.col * this.tileSize -
+        this.originX;
+
+      const worldY =
+        item.row * this.tileSize -
+        this.originY;
+
+      const screen =
+        camera.worldToScreen(worldX, worldY);
+
+      const sprite =
+        assetLoader.get(item.spriteKey);
+
+      if (!sprite) continue;
+
+      ctx.drawImage(
+        sprite,
+        screen.x + (this.tileSize - item.size) / 2,
+        screen.y + (this.tileSize - item.size) / 2 + item.yOffset,
+        item.size,
+        item.size
+      );
+    }
+
+    for (const item of this.wallDecorations) {
+      const worldX =
+        item.col * this.tileSize -
+        this.originX;
+
+      const worldY =
+        item.row * this.tileSize -
+        this.originY;
+
+      const screen =
+        camera.worldToScreen(worldX, worldY);
+
+      const sprite =
+        assetLoader.get(item.spriteKey);
+
+      if (!sprite) continue;
+
+      ctx.drawImage(
+        sprite,
+        screen.x + (this.tileSize - item.size) / 2 + item.xOffset,
+        screen.y + (this.tileSize - item.size) / 2 + item.yOffset,
+        item.size,
+        item.size
+      );
+    }
+  }
+
   // ================= GAMBAR =================
 
   draw(ctx, camera) {
@@ -951,16 +1373,8 @@ export class TileMap {
         ) + 1
       );
 
-    for (
-      let row = startRow;
-      row <= endRow;
-      row++
-    ) {
-      for (
-        let col = startCol;
-        col <= endCol;
-        col++
-      ) {
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
         const worldX =
           col * this.tileSize -
           this.originX;
@@ -978,113 +1392,132 @@ export class TileMap {
         const tile =
           this.grid[row][col];
 
-        // Void = area kosong di luar bentuk dungeon.
-        // Jangan digambar.
+        // Void tidak digambar.
         if (tile === 5) {
           continue;
         }
 
-        let spriteKey =
-          'tileFloor';
-
+        // -------------------------------------------------
+        // WALL
+        // -------------------------------------------------
         if (tile === 1) {
-          spriteKey = 'tileWall';
-        }
+          const wall =
+            assetLoader.get('tileWall');
 
-        if (tile === 2) {
-          spriteKey = 'tileStairs';
-        }
-
-        if (tile === 3) {
-          spriteKey = 'tileObstacle';
-        }
-
-        if (tile === 4) {
-          spriteKey = 'tileHazard';
-        }
-
-        const sprite =
-          assetLoader.get(spriteKey);
-
-        if (sprite) {
-          ctx.drawImage(
-            sprite,
-            screen.x,
-            screen.y,
-            this.tileSize,
-            this.tileSize
-          );
-        } else {
-          if (tile === 1) {
-            ctx.fillStyle = '#4b3621';
-          } else if (tile === 2) {
-            ctx.fillStyle = '#facc15';
-          } else if (tile === 3) {
-            ctx.fillStyle = '#78350f';
-          } else if (tile === 4) {
-            ctx.fillStyle = '#7f1d1d';
+          if (wall) {
+            ctx.drawImage(
+              wall,
+              screen.x,
+              screen.y,
+              this.tileSize,
+              this.tileSize
+            );
           } else {
-            ctx.fillStyle = '#2a2a35';
+            ctx.fillStyle = '#4b556b';
+            ctx.fillRect(
+              screen.x,
+              screen.y,
+              this.tileSize,
+              this.tileSize
+            );
           }
 
-          ctx.fillRect(
-            screen.x,
-            screen.y,
-            this.tileSize,
-            this.tileSize
-          );
+          // Detail dinding digambar di atas wall utama supaya area transparan
+          // tidak membuat lubang hitam.
+          const detailKey =
+            this._wallDetailSpriteKey(col, row);
+
+          if (detailKey) {
+            const detail =
+              assetLoader.get(detailKey);
+
+            if (detail) {
+              ctx.save();
+              ctx.globalAlpha = 0.82;
+              ctx.drawImage(
+                detail,
+                screen.x,
+                screen.y,
+                this.tileSize,
+                this.tileSize
+              );
+              ctx.restore();
+            }
+          }
+
+          continue;
         }
 
-        ctx.strokeStyle =
-          'rgba(255,255,255,0.03)';
-
-        ctx.strokeRect(
-          screen.x,
-          screen.y,
-          this.tileSize,
-          this.tileSize
+        // -------------------------------------------------
+        // FLOOR BASE
+        // Semua tile selain wall/void punya lantai di bawahnya.
+        // Ini juga menghilangkan kotak gelap di belakang obstacle.
+        // -------------------------------------------------
+        this._drawFloorBase(
+          ctx,
+          screen,
+          col,
+          row
         );
 
-        if (
-          !sprite &&
-          (
-            tile === 2 ||
-            tile === 4
-          )
-        ) {
-          ctx.fillStyle =
-            tile === 2
-              ? '#111'
-              : '#fde68a';
+        // Tangga
+        if (tile === 2) {
+          const sprite =
+            assetLoader.get('tileStairs');
 
-          ctx.font =
-            'bold 20px sans-serif';
-
-          ctx.textAlign =
-            'center';
-
-          ctx.textBaseline =
-            'middle';
-
-          ctx.fillText(
-            tile === 2
-              ? '▲'
-              : '✦',
-
-            screen.x +
-              this.tileSize / 2,
-
-            screen.y +
-              this.tileSize / 2
-          );
-
-          ctx.textAlign =
-            'left';
-
-          ctx.textBaseline =
-            'alphabetic';
+          if (sprite) {
+            ctx.drawImage(
+              sprite,
+              screen.x,
+              screen.y,
+              this.tileSize,
+              this.tileSize
+            );
+          }
         }
+
+        // Obstacle collision tile
+        if (tile === 3) {
+          const obstacleKey =
+            this._obstacleSpriteKey(col, row);
+
+          const sprite =
+            assetLoader.get(obstacleKey) ??
+            assetLoader.get('tileObstacle');
+
+          if (sprite) {
+            ctx.drawImage(
+              sprite,
+              screen.x,
+              screen.y,
+              this.tileSize,
+              this.tileSize
+            );
+          }
+        }
+
+        // Hazard legacy jika suatu saat dipakai lagi.
+        if (tile === 4) {
+          const sprite =
+            assetLoader.get('tileHazard');
+
+          if (sprite) {
+            ctx.drawImage(
+              sprite,
+              screen.x,
+              screen.y,
+              this.tileSize,
+              this.tileSize
+            );
+          }
+        }
+
+        // tile 6 (sealed door) cukup floor base.
+        // Pintu sendiri digambar PuzzleManager.
       }
     }
-  }
-}
+
+    // Visual-only props digambar setelah tile map, tetapi masih di bawah
+    // player/enemy karena TileMap.draw dipanggil sebagai background.
+    this._drawVisualDecorations(ctx, camera);
+  }}

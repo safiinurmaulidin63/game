@@ -9,6 +9,8 @@ import { Player } from '../player/Player.js';
 import { Weapon } from '../weapon/Weapon.js';
 import { EnemyManager } from '../enemy/EnemyManager.js';
 import { TileMap } from '../world/TileMap.js';
+import { PuzzleManager } from '../world/PuzzleManager.js';
+import { StoryManager } from '../story/StoryManager.js';
 import { soundManager } from './SoundManager.js';
 
 const MAX_FLOOR = 7; // lantai ke-7 = lantai boss
@@ -27,6 +29,8 @@ export class Game {
     this.camera = new Camera(canvas);
     this.weapon = new Weapon();
     this.enemyManager = new EnemyManager();
+    this.storyManager = new StoryManager(canvas);
+    this.puzzleManager = null;
 
     this.score = 0;
     this.floor = 1;
@@ -73,6 +77,27 @@ export class Game {
       this.enemyManager.spawnForFloor(floorNumber, this.tileMap, this.player);
     }
 
+    // PuzzleManager membaca simbol X / D / T dari TileMap.
+    // Untuk patch pertama, puzzle aktif baru di Level 1.
+    this.puzzleManager = new PuzzleManager(
+      this.tileMap,
+      floorNumber,
+      this.storyManager
+    );
+
+    if (floorNumber === 1) {
+      this.storyManager.show('level1-intro', [
+        {
+          speaker: this.player.characterName,
+          text: 'Tempat ini lebih besar dari yang terlihat dari luar...'
+        },
+        {
+          speaker: 'Misterious Dungeon',
+          text: 'Mekanisme kuno masih bergerak di balik dinding yang telah lama ditinggalkan.'
+        }
+      ]);
+    }
+
     // Sedikit heal tiap ganti lantai, reward kecil karena berhasil bertahan
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + 3);
 
@@ -100,6 +125,7 @@ export class Game {
     this.player.hp = this.player.maxHp;
     this.player.invulnerableTimer = 0;
     this.weapon.projectiles = [];
+    this.storyManager.resetAll();
 
     this._setupFloor(this.floor);
   }
@@ -138,6 +164,12 @@ export class Game {
 
     if (this.paused) return;
 
+    // Saat dialog terbuka, dunia berhenti. Dialog tetap bisa dilanjutkan
+    // dengan Enter/Space/E di PC atau tap pada dialog di HP.
+    if (this.storyManager.isActive()) {
+      return;
+    }
+
     if (this.player.hp <= 0) {
       this.gameOver = true;
       soundManager.play('gameOver');
@@ -154,7 +186,11 @@ export class Game {
 
     this.enemyManager.handleEnemyProjectileHits(this.player);
 
-    this._updateCompass(dt);
+    if (this.puzzleManager) {
+      this.puzzleManager.update(this.player);
+    }
+
+    // Compass sengaja tidak dipakai lagi supaya eksplorasi lebih seru.
     this._checkFloorTransition();
   }
 
@@ -230,16 +266,22 @@ export class Game {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     this.tileMap.draw(ctx, this.camera);
+
+    if (this.puzzleManager) {
+      this.puzzleManager.draw(ctx, this.camera);
+    }
+
     this.enemyManager.draw(ctx, this.camera);
     this.player.draw(ctx, this.camera);
     this.weapon.draw(ctx, this.camera);
 
     this._drawHUD(ctx);
-    this._drawCompass(ctx);
 
     if (this.gameOver) this._drawOverlay(ctx, 'GAME OVER', '#ef4444');
     if (this.victory) this._drawOverlay(ctx, 'YOU WIN!', '#4ade80');
     if (this.paused) this._drawPauseOverlay(ctx);
+
+    this.storyManager.draw(ctx);
   }
 
   _drawHUD(ctx) {
@@ -271,10 +313,22 @@ export class Game {
         : `Lantai ${this.floor} / ${MAX_FLOOR}`;
     ctx.fillText(floorLabel, x, y + barHeight + 66);
 
+    let messageY = y + barHeight + 90;
+
+    if (this.puzzleManager) {
+      const puzzleText = this.puzzleManager.getStatusText();
+      if (puzzleText) {
+        ctx.fillStyle = '#c4b5fd';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(puzzleText, x, messageY);
+        messageY += 22;
+      }
+    }
+
     if (this.floor < MAX_FLOOR && this.enemyManager.enemies.length === 0) {
       ctx.fillStyle = '#facc15';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText('Semua musuh tumbang! Cari tangga (▲) untuk lanjut.', x, y + barHeight + 90);
+      ctx.fillText('Semua musuh tumbang! Cari jalan menuju tangga.', x, messageY);
     }
 
     // Indikator mute, pojok kiri bawah — kecil & tidak mengganggu

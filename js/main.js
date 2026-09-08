@@ -48,6 +48,13 @@ const manifest = {
   tileStairs: './assets/tiles/stairs.png',
   tileObstacle: './assets/tiles/obstacle.png',
   tileHazard: './assets/tiles/hazard.png',
+
+  // Puzzle + story.
+  puzzleSwitch: './assets/puzzle/switch_pressure.png',
+  sealedDoorClosed: './assets/puzzle/sealed_door_closed.png',
+  sealedDoorOpen: './assets/puzzle/sealed_door_open.png',
+  ancientTablet: './assets/story/ancient_tablet.png',
+  dialogueBox: './assets/ui/dialoguebox1.png',
   playerBullet: './assets/projectiles/player_bullet.png',
   enemyBullet: './assets/projectiles/enemy_bullet.png',
 };

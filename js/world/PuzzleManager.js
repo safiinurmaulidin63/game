@@ -12,10 +12,16 @@
 import { assetLoader } from '../core/AssetLoader.js';
 
 export class PuzzleManager {
-  constructor(tileMap, floorNumber, storyManager) {
+  constructor(
+    tileMap,
+    floorNumber,
+    storyManager,
+    enemyManager = null
+  ) {
     this.tileMap = tileMap;
     this.floorNumber = floorNumber;
     this.storyManager = storyManager;
+    this.enemyManager = enemyManager;
 
     const objects = tileMap.getPuzzleObjects();
 
@@ -59,12 +65,25 @@ export class PuzzleManager {
         ][index] ?? 'pressure';
       }
 
+      // Level 7:
+      // 3 X di arena = Seal Node Sun / Moon / Star.
+      if (this.floorNumber === 7) {
+        kind = [
+          'sun',
+          'moon',
+          'star'
+        ][index] ?? 'pressure';
+      }
+
       return {
         ...item,
         id: `switch-${index + 1}`,
         kind,
         active: false,
         wasInside: false,
+
+        // Dipakai khusus Level 7 Seal Node.
+        charge: 0,
       };
     });
 
@@ -106,13 +125,59 @@ export class PuzzleManager {
     this.level7BossDefeated = false;
     this.level7CoreRestored = false;
 
+    // Boss Seal Node mechanic.
+    //
+    // Ada 3 cycle barrier:
+    // Cycle 1 = Sun -> Moon -> Star
+    // Cycle 2 = Moon -> Star -> Sun
+    // Cycle 3 = Star -> Sun -> Moon
+    //
+    // Player harus berada dekat node target selama beberapa saat.
+    this.level7SealCycle = 0;
+    this.level7SequenceIndex = 0;
+
+    this.level7NodeCharge = 0;
+    this.level7NodeChargeRequired = 1.05;
+    this.level7NodeRadius = 58;
+
+    this.level7SealOrders = [
+      ['sun', 'moon', 'star'],
+      ['moon', 'star', 'sun'],
+      ['star', 'sun', 'moon'],
+    ];
+
+    this.level7LastShieldActive = false;
+    this.level7MechanismInitialized = false;
+
+    // Boss sudah di-spawn sebelum PuzzleManager dibuat.
+    // Aktifkan external mechanism agar temporary Step-1 auto-unlock MATI.
+    if (
+      this.floorNumber === 7 &&
+      this.enemyManager
+    ) {
+      this.enemyManager.enableBossMechanism(3);
+
+      const boss =
+        this.enemyManager.getBoss?.();
+
+      this.level7LastShieldActive =
+        Boolean(
+          boss?.isShielded?.()
+        );
+
+      this.level7MechanismInitialized =
+        Boolean(boss);
+    }
+
     // Pastikan door kembali tertutup saat level baru dibuat.
     if (this.doors.length > 0) {
       this.tileMap.setSealedDoorOpen(false);
     }
   }
 
-  update(player) {
+  update(player, dt = 1 / 60) {
+    this._frameDt = dt;
+
     if (this.floorNumber === 5) {
       this._updateLevel5(player);
       return;
@@ -524,15 +589,87 @@ export class PuzzleManager {
   }
 
   _updateLevel7(player) {
-    if (
-      !this.level7BossDefeated ||
-      this.completed
-    ) {
+    // =====================================================
+    // BOSS SEAL NODE MECHANIC
+    // =====================================================
+    if (!this.level7BossDefeated) {
+      const boss =
+        this.enemyManager?.getBoss?.();
+
+      if (!boss) {
+        return;
+      }
+
+      const shieldActive =
+        boss.isShielded?.() ?? false;
+
+      // Safety: kalau PuzzleManager sempat dibuat sebelum boss tersedia,
+      // sambungkan mechanism segera setelah boss ditemukan.
+      if (!this.level7MechanismInitialized) {
+        this.enemyManager.enableBossMechanism(3);
+
+        this.level7MechanismInitialized = true;
+        this.level7LastShieldActive = shieldActive;
+
+        this._resetLevel7SealNodes();
+      }
+
+      // Boss Step 1 mengaktifkan barrier kembali pada threshold HP.
+      // Saat transisi OFF -> ON terdeteksi, mulai cycle rune berikutnya.
+      if (
+        shieldActive &&
+        !this.level7LastShieldActive
+      ) {
+        this.level7SealCycle =
+          Math.min(
+            this.level7SealCycle + 1,
+            this.level7SealOrders.length - 1
+          );
+
+        this._resetLevel7SealNodes();
+
+        // Boss sendiri sudah reset mechanismProgress saat barrier aktif.
+        // Kirim 0 sekali lagi agar PuzzleManager + Boss benar-benar sinkron.
+        this.enemyManager.setBossMechanismProgress(
+          0,
+          3
+        );
+      }
+
+      this.level7LastShieldActive =
+        shieldActive;
+
+      // Node hanya bisa di-charge saat barrier aktif.
+      if (shieldActive) {
+        this._updateLevel7SealNodes(
+          player,
+          boss
+        );
+      } else {
+        // Bersihkan partial charge supaya tidak bisa disimpan
+        // sampai barrier cycle berikutnya.
+        this.level7NodeCharge = 0;
+
+        for (const node of this.switches) {
+          node.charge = 0;
+        }
+      }
+
+      return;
+    }
+
+    // =====================================================
+    // AFTER BOSS: THE CORE / ENDING
+    // =====================================================
+    if (this.completed) {
       return;
     }
 
     const core = this.tablets[0];
-    if (!core) return;
+
+    if (!core) {
+      return;
+    }
 
     const distance = Math.hypot(
       player.x - core.x,
@@ -583,6 +720,116 @@ export class PuzzleManager {
         }
       ]
     );
+  }
+
+  _resetLevel7SealNodes() {
+    this.level7SequenceIndex = 0;
+    this.level7NodeCharge = 0;
+
+    for (const node of this.switches) {
+      node.active = false;
+      node.wasInside = false;
+      node.charge = 0;
+    }
+  }
+
+  _updateLevel7SealNodes(player, boss) {
+    if (
+      this.switches.length < 3 ||
+      !boss
+    ) {
+      return;
+    }
+
+    const order =
+      this.level7SealOrders[
+        this.level7SealCycle
+      ] ??
+      this.level7SealOrders[0];
+
+    const expectedKind =
+      order[
+        this.level7SequenceIndex
+      ];
+
+    if (!expectedKind) {
+      return;
+    }
+
+    const expectedNode =
+      this.switches.find(
+        (node) =>
+          node.kind === expectedKind
+      );
+
+    if (!expectedNode) {
+      return;
+    }
+
+    const distance =
+      Math.hypot(
+        player.x - expectedNode.x,
+        player.y - expectedNode.y
+      );
+
+    const inside =
+      distance <=
+      this.level7NodeRadius;
+
+    if (inside) {
+      this.level7NodeCharge +=
+        this._frameDt;
+
+      expectedNode.charge =
+        Math.min(
+          1,
+          this.level7NodeCharge /
+          this.level7NodeChargeRequired
+        );
+    } else {
+      // Charge turun cepat saat player keluar dari node.
+      this.level7NodeCharge =
+        Math.max(
+          0,
+          this.level7NodeCharge -
+          this._frameDt * 2.4
+        );
+
+      expectedNode.charge =
+        Math.min(
+          1,
+          this.level7NodeCharge /
+          this.level7NodeChargeRequired
+        );
+    }
+
+    if (
+      this.level7NodeCharge <
+      this.level7NodeChargeRequired
+    ) {
+      return;
+    }
+
+    expectedNode.active = true;
+    expectedNode.charge = 1;
+
+    this.level7SequenceIndex += 1;
+    this.level7NodeCharge = 0;
+
+    const progress =
+      this.level7SequenceIndex;
+
+    this.enemyManager.setBossMechanismProgress(
+      progress,
+      3
+    );
+
+    // Reset partial charge display untuk target berikutnya.
+    for (const node of this.switches) {
+      if (!node.active) {
+        node.charge = 0;
+      }
+    }
   }
 
   isFinalSequenceComplete() {
@@ -958,7 +1205,58 @@ export class PuzzleManager {
 
     if (this.floorNumber === 7) {
       if (!this.level7BossDefeated) {
-        return 'ASTER — THE CORRUPTED WARDEN';
+        const boss =
+          this.enemyManager?.getBoss?.();
+
+        if (!boss) {
+          return 'ASTER — THE CORRUPTED WARDEN';
+        }
+
+        if (boss.isShielded?.()) {
+          const order =
+            this.level7SealOrders[
+              this.level7SealCycle
+            ] ??
+            this.level7SealOrders[0];
+
+          const target =
+            order[
+              this.level7SequenceIndex
+            ] ??
+            '';
+
+          const names = {
+            sun: 'MATAHARI',
+            moon: 'BULAN',
+            star: 'BINTANG',
+          };
+
+          const chargePercent =
+            Math.round(
+              Math.min(
+                1,
+                this.level7NodeCharge /
+                this.level7NodeChargeRequired
+              ) *
+              100
+            );
+
+          return (
+            `Seal ${this.level7SealCycle + 1}/3 • ` +
+            `Target: ${names[target] ?? target} • ` +
+            `Charge ${chargePercent}%`
+          );
+        }
+
+        if (boss.isVulnerable?.()) {
+          return 'SHIELD BREAK • SERANG ASTER SEKARANG!';
+        }
+
+        if (boss.getState?.() === 'enraged') {
+          return 'ASTER ENRAGED • BERSIAP!';
+        }
+
+        return 'ASTER • HUNT';
       }
 
       if (!this.completed) {
@@ -986,7 +1284,39 @@ export class PuzzleManager {
   }
 
   _drawSwitches(ctx, camera) {
+    const level7Boss =
+      this.floorNumber === 7
+        ? this.enemyManager?.getBoss?.()
+        : null;
+
+    const level7ShieldActive =
+      Boolean(
+        level7Boss?.isShielded?.()
+      );
+
+    const level7Order =
+      this.level7SealOrders[
+        this.level7SealCycle
+      ] ??
+      [];
+
+    const level7ExpectedKind =
+      level7Order[
+        this.level7SequenceIndex
+      ];
+
     for (const sw of this.switches) {
+      // Setelah barrier pecah / boss mati, Seal Node menghilang
+      // supaya arena kembali bersih untuk combat.
+      if (
+        this.floorNumber === 7 &&
+        (
+          this.level7BossDefeated ||
+          !level7ShieldActive
+        )
+      ) {
+        continue;
+      }
       if (
         sw.kind.startsWith('fragment') &&
         sw.active
@@ -1021,11 +1351,13 @@ export class PuzzleManager {
 
       if (sprite) {
         const drawSize =
-          sw.kind.startsWith('torch')
-            ? 54
-            : sw.kind.startsWith('fragment')
-              ? 46
-              : 60;
+          this.floorNumber === 7
+            ? 78
+            : sw.kind.startsWith('torch')
+              ? 54
+              : sw.kind.startsWith('fragment')
+                ? 46
+                : 60;
 
         ctx.drawImage(
           sprite,
@@ -1083,6 +1415,130 @@ export class PuzzleManager {
           36,
           36
         );
+      }
+
+      // ===================================================
+      // LEVEL 7 SEAL NODE VFX
+      // ===================================================
+      if (this.floorNumber === 7) {
+        const isExpected =
+          sw.kind ===
+          level7ExpectedKind;
+
+        const pulse =
+          1 +
+          Math.sin(
+            performance.now() * 0.009
+          ) *
+          0.06;
+
+        ctx.save();
+
+        // Active node stays lit.
+        if (sw.active) {
+          ctx.globalAlpha = 0.9;
+          ctx.strokeStyle = '#c4b5fd';
+          ctx.lineWidth = 6;
+          ctx.shadowBlur = 18;
+          ctx.shadowColor = '#8b5cf6';
+
+          ctx.beginPath();
+          ctx.arc(
+            screen.x,
+            screen.y,
+            46,
+            0,
+            Math.PI * 2
+          );
+          ctx.stroke();
+        }
+
+        // Expected node gets a large pulsing targeting ring.
+        if (
+          isExpected &&
+          !sw.active
+        ) {
+          const ringRadius =
+            51 * pulse;
+
+          ctx.globalAlpha = 0.88;
+          ctx.strokeStyle = '#f8fafc';
+          ctx.lineWidth = 4;
+          ctx.shadowBlur = 22;
+          ctx.shadowColor =
+            sw.kind === 'sun'
+              ? '#fbbf24'
+              : sw.kind === 'moon'
+                ? '#38bdf8'
+                : '#a78bfa';
+
+          ctx.beginPath();
+
+          ctx.arc(
+            screen.x,
+            screen.y,
+            ringRadius,
+            0,
+            Math.PI * 2
+          );
+
+          ctx.stroke();
+
+          // Charge arc.
+          ctx.globalAlpha = 1;
+          ctx.strokeStyle =
+            sw.kind === 'sun'
+              ? '#fbbf24'
+              : sw.kind === 'moon'
+                ? '#38bdf8'
+                : '#a78bfa';
+
+          ctx.lineWidth = 9;
+          ctx.lineCap = 'round';
+
+          ctx.beginPath();
+
+          ctx.arc(
+            screen.x,
+            screen.y,
+            43,
+            -Math.PI / 2,
+            -Math.PI / 2 +
+            Math.PI *
+            2 *
+            Math.min(
+              1,
+              sw.charge ?? 0
+            )
+          );
+
+          ctx.stroke();
+
+          ctx.font =
+            'bold 11px monospace';
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          ctx.fillStyle =
+            'rgba(0,0,0,0.76)';
+
+          ctx.fillText(
+            'TARGET',
+            screen.x + 1,
+            screen.y - 57 + 1
+          );
+
+          ctx.fillStyle = '#ffffff';
+
+          ctx.fillText(
+            'TARGET',
+            screen.x,
+            screen.y - 57
+          );
+        }
+
+        ctx.restore();
       }
     }
   }

@@ -155,6 +155,8 @@ function buildCharacterMenu() {
       />
       <span class="character-card-name">${character.name}</span>
       <span class="character-card-role">${character.role}</span>
+      <span class="character-card-passive">${character.passiveLabel}</span>
+      <span class="character-card-skill">Skill: ${character.skill.name}</span>
     `;
 
     button.addEventListener('click', () => {

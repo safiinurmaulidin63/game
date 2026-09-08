@@ -8,6 +8,7 @@ import { Camera } from './Camera.js';
 import { Player } from '../player/Player.js';
 import { Weapon } from '../weapon/Weapon.js';
 import { EnemyManager } from '../enemy/EnemyManager.js';
+import { ItemManager } from '../item/ItemManager.js';
 import { TileMap } from '../world/TileMap.js';
 import { PuzzleManager } from '../world/PuzzleManager.js';
 import { StoryManager } from '../story/StoryManager.js';
@@ -29,11 +30,48 @@ export class Game {
     this.camera = new Camera(canvas);
     this.weapon = new Weapon();
     this.enemyManager = new EnemyManager();
+    this.itemManager = new ItemManager();
     this.storyManager = new StoryManager(canvas);
     this.puzzleManager = null;
 
     this.score = 0;
-    this.floor = 1;
+
+    // =====================================================
+    // DEV TEST MODE
+    // =====================================================
+    // Aktifkan lewat URL:
+    //   ?dev=1&floor=7
+    //
+    // Contoh local Live Server:
+    //   http://127.0.0.1:5500/?dev=1&floor=7
+    //
+    // Contoh GitHub Pages:
+    //   https://...github.io/.../?dev=1&floor=7
+    //
+    // Kalau dev=1 tidak ada, game tetap mulai normal dari lantai 1.
+    const devParams =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    this.devMode =
+      devParams.get('dev') === '1';
+
+    const requestedDevFloor =
+      Number(
+        devParams.get('floor')
+      );
+
+    this.floor =
+      this.devMode &&
+      Number.isInteger(
+        requestedDevFloor
+      ) &&
+      requestedDevFloor >= 1 &&
+      requestedDevFloor <= MAX_FLOOR
+        ? requestedDevFloor
+        : 1;
+
     this.gameOver = false;
     this.victory = false;
     this.paused = false;
@@ -77,6 +115,10 @@ export class Game {
     this.player.x = start.x;
     this.player.y = start.y;
 
+    // Jangan bawa hitbox/projectile/item world dari lantai sebelumnya.
+    this.weapon.clearTransient();
+    this.itemManager.clearFloor();
+
     this.enemyManager.clear();
     if (isBossFloor) {
       this.enemyManager.spawnBossFloor();
@@ -89,7 +131,8 @@ export class Game {
     this.puzzleManager = new PuzzleManager(
       this.tileMap,
       floorNumber,
-      this.storyManager
+      this.storyManager,
+      this.enemyManager
     );
 
     if (floorNumber === 1) {
@@ -199,17 +242,72 @@ export class Game {
         {
           speaker: 'Aster',
           text: 'Energinya sudah terlalu jauh mengambil alih. Jangan mendekat.'
+        },
+        {
+          speaker: 'Ancient Mechanism',
+          text: 'Barrier Seventh Seal terhubung pada tiga simpul rune di arena.'
+        },
+        {
+          speaker: this.player.characterName,
+          text: 'Matahari, Bulan, Bintang... Aku harus menahan posisi di rune yang menyala sampai barrier runtuh.'
         }
       ]);
     }
 
-    // Sedikit heal tiap ganti lantai, reward kecil karena berhasil bertahan
-    this.player.hp = Math.min(this.player.maxHp, this.player.hp + 3);
+    // Rest heal kecil saja. Heal utama sekarang datang dari item.
+    if (floorNumber > 1) {
+      this.player.heal(1);
+    }
 
     // Reset compass: labirin baru = jalur lama sudah tidak valid
     this._compassPath = null;
     this._compassTimer = 0;
     this.compassAngle = null;
+  }
+
+  _devJumpToFloor(floorNumber) {
+    if (!this.devMode) {
+      return;
+    }
+
+    const targetFloor =
+      Math.max(
+        1,
+        Math.min(
+          MAX_FLOOR,
+          Math.floor(floorNumber)
+        )
+      );
+
+    this.floor = targetFloor;
+
+    this.gameOver = false;
+    this.victory = false;
+    this.paused = false;
+    this.finalBossDefeated = false;
+
+    // Testing harus cepat: selalu masuk lantai test dengan HP penuh.
+    this.player.hp =
+      this.player.maxHp;
+
+    this.player.invulnerableTimer = 0;
+
+    // Testing heal/boss tanpa grinding drop.
+    this.itemManager.setPotions(
+      this.itemManager.getMaxPotions()
+    );
+
+    // Tutup dialog dari lantai sebelumnya.
+    this.storyManager.resetAll();
+
+    // Reset attack/skill agar hasil test konsisten.
+    this.weapon.reset();
+
+    this._setupFloor(
+      this.floor
+    );
+
+    soundManager.play('levelUp');
   }
 
   _nextFloor() {
@@ -230,7 +328,10 @@ export class Game {
 
     this.player.hp = this.player.maxHp;
     this.player.invulnerableTimer = 0;
-    this.weapon.projectiles = [];
+
+    this.itemManager.resetRun();
+
+    this.weapon.reset();
     this.storyManager.resetAll();
 
     this._setupFloor(this.floor);
@@ -251,6 +352,40 @@ export class Game {
   }
 
   _update(dt) {
+    // =====================================================
+    // DEV TEST SHORTCUTS
+    // Hanya aktif kalau URL mengandung ?dev=1
+    // =====================================================
+    if (this.devMode) {
+      // B = langsung ke boss floor.
+      if (this.input.wasJustPressed('KeyB')) {
+        this._devJumpToFloor(MAX_FLOOR);
+        return;
+      }
+
+      // H = full heal.
+      if (this.input.wasJustPressed('KeyH')) {
+        this.player.hp =
+          this.player.maxHp;
+
+        this.player.invulnerableTimer = 0;
+      }
+
+      // N = next floor cepat.
+      if (this.input.wasJustPressed('KeyN')) {
+        const nextFloor =
+          this.floor >= MAX_FLOOR
+            ? 1
+            : this.floor + 1;
+
+        this._devJumpToFloor(
+          nextFloor
+        );
+
+        return;
+      }
+    }
+
     // Mute bisa ditoggle kapan saja, termasuk pas lagi main
     if (this.input.wasJustPressed('KeyM')) {
       soundManager.toggleMuted();
@@ -282,18 +417,48 @@ export class Game {
       return;
     }
 
+    // R di gameplay = pakai potion.
+    // R saat GAME OVER tetap restart karena branch di atas sudah return.
+    if (
+      this.input.wasJustPressed('KeyR') ||
+      this.input.wasJustPressed('Heal')
+    ) {
+      this.itemManager.usePotion(
+        this.player
+      );
+    }
+
     this.player.update(dt, this.input, this.camera, this.tileMap);
     this.camera.follow(this.player);
     this.weapon.update(dt, this.input, this.player, this.camera, this.tileMap);
     this.enemyManager.update(dt, this.player, this.tileMap);
 
-    const gained = this.enemyManager.handleProjectileHits(this.weapon.projectiles);
+    const gained =
+      this.enemyManager.handleProjectileHits(
+        this.weapon.projectiles
+      );
+
     this.score += gained;
 
-    this.enemyManager.handleEnemyProjectileHits(this.player);
+    // Musuh yang mati mengirim event ke ItemManager sebelum dihapus.
+    this.itemManager.handleEnemyDeaths(
+      this.enemyManager.consumeDeathEvents()
+    );
+
+    this.enemyManager.handleEnemyProjectileHits(
+      this.player
+    );
+
+    this.itemManager.update(
+      dt,
+      this.player
+    );
 
     if (this.puzzleManager) {
-      this.puzzleManager.update(this.player);
+      this.puzzleManager.update(
+        this.player,
+        dt
+      );
     }
 
     // Compass sengaja tidak dipakai lagi supaya eksplorasi lebih seru.
@@ -401,6 +566,12 @@ export class Game {
     }
 
     this.enemyManager.draw(ctx, this.camera);
+
+    this.itemManager.draw(
+      ctx,
+      this.camera
+    );
+
     this.player.draw(ctx, this.camera);
     this.weapon.draw(ctx, this.camera);
 
@@ -416,6 +587,13 @@ export class Game {
   }
 
   _drawHUD(ctx) {
+    this._syncMobileSkillButton();
+    this._syncMobileHealButton();
+
+    if (this.devMode) {
+      this._drawDevHUD(ctx);
+    }
+
     const barWidth = 220;
     const barHeight = 22;
     const x = 20;
@@ -444,7 +622,59 @@ export class Game {
         : `Lantai ${this.floor} / ${MAX_FLOOR}`;
     ctx.fillText(floorLabel, x, y + barHeight + 66);
 
-    let messageY = y + barHeight + 90;
+    const skillName =
+      this.weapon.getSkillName(
+        this.player
+      );
+
+    const skillRemaining =
+      this.weapon.getSkillCooldownRemaining();
+
+    const skillStatus =
+      skillRemaining <= 0
+        ? 'READY'
+        : `${skillRemaining.toFixed(1)}s`;
+
+    ctx.fillStyle =
+      skillRemaining <= 0
+        ? '#67e8f9'
+        : '#94a3b8';
+
+    ctx.font = 'bold 14px sans-serif';
+
+    ctx.fillText(
+      `Skill [Q]: ${skillName} • ${skillStatus}`,
+      x,
+      y + barHeight + 88
+    );
+
+    const potionCount =
+      this.itemManager.getPotionCount();
+
+    const maxPotions =
+      this.itemManager.getMaxPotions();
+
+    const potionHeal =
+      this.itemManager.getPotionHealAmount();
+
+    ctx.fillStyle =
+      potionCount > 0
+        ? '#fda4af'
+        : '#94a3b8';
+
+    ctx.font =
+      'bold 14px sans-serif';
+
+    ctx.fillText(
+      `Potion [R]: ${potionCount}/${maxPotions} • Heal +${potionHeal}`,
+      x,
+      y + barHeight + 110
+    );
+
+    let messageY =
+      y +
+      barHeight +
+      134;
 
     if (this.puzzleManager) {
       const puzzleText = this.puzzleManager.getStatusText();
@@ -514,6 +744,139 @@ export class Game {
     ctx.textAlign = 'center';
     ctx.fillText(allClear ? 'TANGGA ▲' : 'Tangga (bersihkan musuh)', cx, cy + radius + 16);
     ctx.textAlign = 'left';
+  }
+
+
+  _drawDevHUD(ctx) {
+    ctx.save();
+
+    const x =
+      this.canvas.width - 18;
+
+    const y = 18;
+
+    const width = 255;
+    const height = 64;
+
+    ctx.fillStyle =
+      'rgba(15, 23, 42, 0.86)';
+
+    ctx.fillRect(
+      x - width,
+      y,
+      width,
+      height
+    );
+
+    ctx.strokeStyle =
+      '#f59e0b';
+
+    ctx.lineWidth = 2;
+
+    ctx.strokeRect(
+      x - width,
+      y,
+      width,
+      height
+    );
+
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 13px monospace';
+
+    ctx.fillText(
+      `DEV MODE • FLOOR ${this.floor}`,
+      x - 10,
+      y + 9
+    );
+
+    ctx.fillStyle = '#e2e8f0';
+    ctx.font = '11px monospace';
+
+    ctx.fillText(
+      'B: BOSS   N: NEXT   H: FULL HEAL',
+      x - 10,
+      y + 34
+    );
+
+    ctx.restore();
+  }
+
+  _syncMobileSkillButton() {
+    const button =
+      document.getElementById(
+        'mobileSkillButton'
+      );
+
+    if (!button) return;
+
+    const remaining =
+      this.weapon.getSkillCooldownRemaining();
+
+    const skillName =
+      this.weapon.getSkillName(
+        this.player
+      );
+
+    button.setAttribute(
+      'aria-label',
+      `Skill ${skillName}`
+    );
+
+    if (remaining <= 0) {
+      button.textContent =
+        'SKILL\nREADY';
+
+      button.classList.remove(
+        'cooldown'
+      );
+
+      return;
+    }
+
+    button.textContent =
+      `SKILL\n${remaining.toFixed(1)}s`;
+
+    button.classList.add(
+      'cooldown'
+    );
+  }
+
+  _syncMobileHealButton() {
+    const button =
+      document.getElementById(
+        'mobileHealButton'
+      );
+
+    if (!button) return;
+
+    const count =
+      this.itemManager.getPotionCount();
+
+    const canUse =
+      this.itemManager.canUsePotion(
+        this.player
+      );
+
+    button.textContent =
+      `HEAL\nx${count}`;
+
+    button.setAttribute(
+      'aria-label',
+      `Heal potion. Tersisa ${count}`
+    );
+
+    if (canUse) {
+      button.classList.remove(
+        'disabled'
+      );
+    } else {
+      button.classList.add(
+        'disabled'
+      );
+    }
   }
 
   _drawFinalVictoryOverlay(ctx) {

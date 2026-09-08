@@ -19,6 +19,11 @@ export class Player {
     this.weaponLabel = character.role;
     this.spriteKeys = character.spriteKeys;
 
+    // Combat v2.
+    this.combat = character.combat;
+    this.skill = character.skill;
+    this.passiveLabel = character.passiveLabel;
+
     // Collision tetap 32px, tapi gambar sprite dibuat lebih besar.
     this.size = 32;
     this.drawHeight = 52;
@@ -48,6 +53,30 @@ export class Player {
 
     this.invulnerableTimer = this.invulnerableDuration;
     soundManager.play('playerHurt');
+  }
+
+  heal(amount) {
+    if (
+      amount <= 0 ||
+      this.hp <= 0 ||
+      this.hp >= this.maxHp
+    ) {
+      return 0;
+    }
+
+    const before =
+      this.hp;
+
+    this.hp =
+      Math.min(
+        this.maxHp,
+        this.hp + amount
+      );
+
+    return (
+      this.hp -
+      before
+    );
   }
 
   update(dt, input, camera, tileMap) {
@@ -107,6 +136,28 @@ export class Player {
 
     if (tileMap && tileMap.isHazardAtWorld(this.x, this.y)) {
       this.takeDamage(this.hazardDamage);
+    }
+  }
+
+
+  dash(angle, distance, tileMap) {
+    // Dash dibagi langkah kecil supaya Fighter tidak menembus dinding.
+    const STEP = 8;
+    const total = Math.max(0, distance);
+    let remaining = total;
+
+    while (remaining > 0) {
+      const step = Math.min(STEP, remaining);
+      const nextX = this.x + Math.cos(angle) * step;
+      const nextY = this.y + Math.sin(angle) * step;
+
+      if (this._collidesWithWall(nextX, nextY, tileMap)) {
+        break;
+      }
+
+      this.x = nextX;
+      this.y = nextY;
+      remaining -= step;
     }
   }
 

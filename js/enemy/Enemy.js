@@ -80,13 +80,34 @@ export class Enemy {
     this.hp = this.maxHp;
     this.dead = false;
 
+    // Combat v2: status stun + feedback hit.
+    this.stunTimer = 0;
+    this.hitFlashTimer = 0;
+
     // --- State untuk path-following ---
     this._path = null;
     this._pathTimer = Math.random() * 0.3; // diacak biar tidak semua recompute bebarengan
     this._jitterPhase = Math.random() * 10;
   }
 
+  applyStun(duration) {
+    if (!duration || duration <= 0) return;
+
+    // Boss punya resistensi stun supaya skill Monk tidak mengunci boss terlalu lama.
+    const resistance =
+      this.size >= 60
+        ? 0.35
+        : 1;
+
+    this.stunTimer = Math.max(
+      this.stunTimer,
+      duration * resistance
+    );
+  }
+
   takeDamage(amount) {
+    this.hitFlashTimer = 0.09;
+
     this.hp -= amount;
     if (this.hp <= 0) {
       this.hp = 0;
@@ -101,6 +122,22 @@ export class Enemy {
   // enemyProjectiles = array milik EnemyManager, dipakai musuh ranged
   // tileMap = dipakai untuk pathfinding, garis pandang, dan tabrakan dinding
   update(dt, player, others, enemyProjectiles, tileMap) {
+    if (this.hitFlashTimer > 0) {
+      this.hitFlashTimer = Math.max(
+        0,
+        this.hitFlashTimer - dt
+      );
+    }
+
+    if (this.stunTimer > 0) {
+      this.stunTimer = Math.max(
+        0,
+        this.stunTimer - dt
+      );
+
+      return;
+    }
+
     const dx = player.x - this.x;
     const dy = player.y - this.y;
     const distToPlayer = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -283,9 +320,67 @@ export class Enemy {
         this.size,
         this.size
       );
+
+      if (this.hitFlashTimer > 0) {
+        ctx.save();
+        ctx.globalAlpha = Math.min(
+          0.75,
+          this.hitFlashTimer / 0.09
+        );
+        ctx.filter = 'brightness(4) saturate(0)';
+
+        ctx.drawImage(
+          sprite,
+          screen.x - this.size / 2,
+          screen.y - this.size / 2,
+          this.size,
+          this.size
+        );
+
+        ctx.restore();
+      }
     } else {
       ctx.fillStyle = this.color;
-      ctx.fillRect(screen.x - this.size / 2, screen.y - this.size / 2, this.size, this.size);
+      ctx.fillRect(
+        screen.x - this.size / 2,
+        screen.y - this.size / 2,
+        this.size,
+        this.size
+      );
+
+      if (this.hitFlashTimer > 0) {
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = '#fff';
+
+        ctx.fillRect(
+          screen.x - this.size / 2,
+          screen.y - this.size / 2,
+          this.size,
+          this.size
+        );
+
+        ctx.restore();
+      }
+    }
+
+    if (this.stunTimer > 0) {
+      ctx.save();
+
+      ctx.strokeStyle = '#67e8f9';
+      ctx.lineWidth = 3;
+
+      ctx.beginPath();
+      ctx.arc(
+        screen.x,
+        screen.y - this.size / 2 - 16,
+        8,
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+
+      ctx.restore();
     }
   }
 }
